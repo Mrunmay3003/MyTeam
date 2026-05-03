@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase";
 const PLACEHOLDER_CHATS = ["Creatives", "Dev", "Outreach"];
 const OPENING_MESSAGE =
   "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
-const AUTO_SUMMARY_EXCHANGES = 6;
+const AUTO_SUMMARY_EXCHANGES = 5;
 const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
 
 function ChevronLeftIcon({ className }) {
@@ -85,6 +85,7 @@ export default function DashboardPage() {
   const menuRef = useRef(null);
   const autoSummaryTriggeredRef = useRef(false);
   const contextScrollRef = useRef(null);
+  const collapseTimeoutRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -115,6 +116,14 @@ export default function DashboardPage() {
     }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (collapseTimeoutRef.current) {
+        window.clearTimeout(collapseTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -313,7 +322,7 @@ export default function DashboardPage() {
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
-    if (!workspaceId || !onboardingChatId || onboardingBusy) return;
+    if (!workspaceId || !onboardingChatId || onboardingBusy || onboardingComplete) return;
 
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -388,9 +397,16 @@ export default function DashboardPage() {
           throw new Error("Could not parse onboarding summary payload.");
         }
         await saveBusinessMemory(workspaceId, parsed);
+        autoSummaryTriggeredRef.current = true;
         setOnboardingSuccess("Business profile saved!");
         setOnboardingComplete(true);
-        window.setTimeout(() => setContextOpen(false), 2000);
+        if (collapseTimeoutRef.current) {
+          window.clearTimeout(collapseTimeoutRef.current);
+        }
+        collapseTimeoutRef.current = window.setTimeout(() => {
+          setContextOpen(false);
+        }, 2000);
+        return;
       }
     } catch (error) {
       setOnboardingError(error.message ?? "Something went wrong.");
@@ -398,7 +414,7 @@ export default function DashboardPage() {
       setOnboardingBusy(false);
       setOnboardingInput("");
     }
-  }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
+  }, [onboardingBusy, onboardingChatId, onboardingComplete, onboardingMessages, workspaceId]);
 
   async function handleOnboardingSubmit(event) {
     event.preventDefault();
