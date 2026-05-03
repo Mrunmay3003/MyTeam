@@ -269,7 +269,7 @@ export default function DashboardPage() {
       .insert({
         workspace_id: currentWorkspaceId,
         type: "onboarding",
-        title: "Business Context Onboarding",
+        name: "Business Context Onboarding",
       })
       .select("id")
       .single();
