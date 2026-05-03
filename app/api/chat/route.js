@@ -1,5 +1,5 @@
 const ONBOARDING_SYSTEM_PROMPT =
-  "You are a warm, friendly onboarding assistant for MyTeam. Learn about the user's business by asking ONE question at a time. Cover: company name, industry, team size and roles, ongoing projects, flagship product, 1-2 year goals, and main coordination challenges. Be conversational, not like a form. When you have enough information, respond with exactly ONBOARDING_COMPLETE followed by a JSON object with keys: companyName, industry, teamSize, roles, ongoingProjects, flagshipProduct, goals, challenges.";
+  "You are a warm, friendly onboarding assistant for MyTeam. Learn about the user's business by asking ONE question at a time. Cover: company name, industry, team size and roles, ongoing projects, flagship product, 1-2 year goals, and main coordination challenges. Be conversational, not like a form. When you have enough information, respond with exactly ONBOARDING_COMPLETE followed by a JSON object with keys: companyName, industry, teamSize, roles, ongoingProjects, flagshipProduct, goals, challenges. After the JSON object, on a new line write SUGGESTIONS: followed by a comma-separated list of recommended teammate chat names based on the roles you learned about.";
 
 function normalizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
@@ -27,7 +27,7 @@ export async function POST(request) {
     const system =
       chatType === "onboarding"
         ? forceSummary
-          ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with exactly ONBOARDING_COMPLETE followed by the JSON object.`
+          ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with the required ONBOARDING_COMPLETE, JSON object, and SUGGESTIONS line format.`
           : ONBOARDING_SYSTEM_PROMPT
         : "You are a helpful assistant.";
 
