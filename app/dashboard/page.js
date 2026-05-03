@@ -86,15 +86,12 @@ export default function DashboardPage() {
   const [onboardingInput, setOnboardingInput] = useState("");
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [onboardingError, setOnboardingError] = useState(null);
-  const [onboardingSuccess, setOnboardingSuccess] = useState(null);
-  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [contextOpen, setContextOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const autoSummaryTriggeredRef = useRef(false);
   const contextScrollRef = useRef(null);
-  const collapseTimeoutRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,14 +125,6 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (collapseTimeoutRef.current) {
-        window.clearTimeout(collapseTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
     if (!authReady || !userId) return;
     let cancelled = false;
 
@@ -165,10 +154,6 @@ export default function DashboardPage() {
       if (messagesError) throw messagesError;
       if (cancelled) return;
       setOnboardingMessages(existingMessages ?? []);
-
-      if ((existingMessages ?? []).some((m) => m.content?.includes(ONBOARDING_COMPLETE))) {
-        setOnboardingComplete(true);
-      }
     }
 
     bootstrapOnboarding().catch((error) => {
@@ -208,7 +193,6 @@ export default function DashboardPage() {
       !workspaceId ||
       !onboardingChatId ||
       onboardingBusy ||
-      onboardingComplete ||
       autoSummaryTriggeredRef.current ||
       onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES
     ) {
@@ -218,13 +202,7 @@ export default function DashboardPage() {
     submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false }).catch(() => {
       autoSummaryTriggeredRef.current = false;
     });
-  }, [
-    onboardingBusy,
-    onboardingChatId,
-    onboardingComplete,
-    onboardingUserMessageCount,
-    workspaceId,
-  ]);
+  }, [onboardingBusy, onboardingChatId, onboardingUserMessageCount, workspaceId]);
 
   async function handleSignOut() {
     setMenuOpen(false);
@@ -386,7 +364,6 @@ export default function DashboardPage() {
     if (!trimmed) return;
 
     setOnboardingError(null);
-    setOnboardingSuccess(null);
     setOnboardingBusy(true);
 
     let nextMessages = onboardingMessages;
@@ -467,16 +444,17 @@ export default function DashboardPage() {
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
       if (payload.reply.includes(ONBOARDING_COMPLETE)) {
-        autoSummaryTriggeredRef.current = true;
-        setOnboardingComplete(true);
-
-        const parsed = parseOnboardingPayload(payload.reply);
-        if (!parsed) {
-          throw new Error("Could not parse onboarding summary payload.");
-        }
-        await saveBusinessMemory(workspaceId, parsed);
-        setOnboardingSuccess("Business profile saved!");
-        return;
+        const wid = workspaceId;
+        void (async () => {
+          try {
+            const parsed = parseOnboardingPayload(payload.reply);
+            if (parsed && wid) {
+              await saveBusinessMemory(wid, parsed);
+            }
+          } catch {
+            /* silent background update */
+          }
+        })();
       }
     } catch (error) {
       setOnboardingError(error.message ?? "Something went wrong.");
@@ -485,17 +463,6 @@ export default function DashboardPage() {
       setOnboardingInput("");
     }
   }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
-
-  useEffect(() => {
-    if (onboardingSuccess !== "Business profile saved!") return;
-    setContextOpen(true);
-    if (collapseTimeoutRef.current) {
-      window.clearTimeout(collapseTimeoutRef.current);
-    }
-    collapseTimeoutRef.current = window.setTimeout(() => {
-      setContextOpen(false);
-    }, 2000);
-  }, [onboardingSuccess]);
 
   async function handleOnboardingSubmit(event) {
     event.preventDefault();
@@ -676,17 +643,11 @@ export default function DashboardPage() {
                     {onboardingError}
                   </p>
                 )}
-                {onboardingSuccess && (
-                  <p className="mb-2 rounded-md border border-emerald-900/50 bg-emerald-950/40 px-2.5 py-1.5 text-xs text-emerald-200">
-                    {onboardingSuccess}
-                  </p>
-                )}
-
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-[11px] text-zinc-500">
                     {remainingExchanges} exchanges before auto-summary
                   </p>
-                  {onboardingUserMessageCount >= 2 && !onboardingComplete && (
+                  {onboardingUserMessageCount >= 2 && (
                     <button
                       type="button"
                       onClick={() => submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false })}
