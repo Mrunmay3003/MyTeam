@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
@@ -13,6 +13,25 @@ export default function AuthPage() {
   const [info, setInfo] = useState(null);
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (session) {
+        router.replace("/dashboard");
+        router.refresh();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   function isLikelyExistingAccountError(signUpError) {
     const msg = (signUpError.message ?? "").toLowerCase();

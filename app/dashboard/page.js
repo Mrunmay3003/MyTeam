@@ -65,10 +65,31 @@ function PlusIcon({ className }) {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const [authReady, setAuthReady] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [contextOpen, setContextOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (!session) {
+        router.replace("/auth");
+        return;
+      }
+      setAuthReady(true);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   useEffect(() => {
     function handlePointerDown(e) {
@@ -85,6 +106,10 @@ export default function DashboardPage() {
     await supabase.auth.signOut();
     router.replace("/auth");
     router.refresh();
+  }
+
+  if (!authReady) {
+    return null;
   }
 
   return (
