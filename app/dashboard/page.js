@@ -10,6 +10,15 @@ const OPENING_MESSAGE =
 const AUTO_SUMMARY_EXCHANGES = 5;
 const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
 
+/** Remove markdown ``` / ```json code fences so JSON.parse sees raw `{ ... }`. */
+function stripMarkdownJsonFence(text) {
+  return text
+    .trim()
+    .replace(/^`{3}(?:json)?\s*/i, "")
+    .replace(/\s*`{3}\s*$/, "")
+    .trim();
+}
+
 function ChevronLeftIcon({ className }) {
   return (
     <svg
@@ -290,7 +299,9 @@ export default function DashboardPage() {
   function parseOnboardingPayload(replyText) {
     const markerIndex = replyText.indexOf(ONBOARDING_COMPLETE);
     if (markerIndex < 0) return null;
-    const afterMarker = replyText.slice(markerIndex + ONBOARDING_COMPLETE.length).trim();
+    const afterMarker = stripMarkdownJsonFence(
+      replyText.slice(markerIndex + ONBOARDING_COMPLETE.length)
+    );
     const firstBrace = afterMarker.indexOf("{");
     if (firstBrace < 0) return null;
 
@@ -335,25 +346,34 @@ export default function DashboardPage() {
   }
 
   async function saveBusinessMemory(currentWorkspaceId, payload) {
-    const upsertProfile = await supabase.from("business_memory").upsert(
-      {
-        workspace_id: currentWorkspaceId,
-        profile: payload,
-      },
-      { onConflict: "workspace_id" }
-    );
+    const profileRow = {
+      workspace_id: currentWorkspaceId,
+      profile: payload,
+    };
+    console.log("[business_memory] upsert (profile column)", profileRow);
+    const upsertProfile = await supabase.from("business_memory").upsert(profileRow, {
+      onConflict: "workspace_id",
+    });
 
-    if (!upsertProfile.error) return;
+    if (upsertProfile.error) {
+      console.log("[business_memory] upsert error (profile column)", upsertProfile.error);
+    } else {
+      return;
+    }
 
-    const upsertExpanded = await supabase.from("business_memory").upsert(
-      {
-        workspace_id: currentWorkspaceId,
-        ...payload,
-      },
-      { onConflict: "workspace_id" }
-    );
+    const expandedRow = {
+      workspace_id: currentWorkspaceId,
+      ...payload,
+    };
+    console.log("[business_memory] upsert (expanded columns)", expandedRow);
+    const upsertExpanded = await supabase.from("business_memory").upsert(expandedRow, {
+      onConflict: "workspace_id",
+    });
 
-    if (upsertExpanded.error) throw upsertExpanded.error;
+    if (upsertExpanded.error) {
+      console.log("[business_memory] upsert error (expanded columns)", upsertExpanded.error);
+      throw upsertExpanded.error;
+    }
   }
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
