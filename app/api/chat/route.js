@@ -70,7 +70,35 @@ export async function POST(request) {
           : ONBOARDING_SYSTEM_PROMPT
         : "You are a helpful assistant.";
 
+    while (
+      effectiveMessages.length > 0 &&
+      effectiveMessages[effectiveMessages.length - 1].role === "assistant"
+    ) {
+      effectiveMessages.pop();
+    }
+
+    if (effectiveMessages.length === 0) {
+      return Response.json(
+        {
+          error:
+            "No user message to send after removing trailing assistant turns.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const lastMsg = effectiveMessages[effectiveMessages.length - 1];
+    if (lastMsg.role !== "user") {
+      return Response.json(
+        { error: "Last message must be from user (unexpected state)." },
+        { status: 400 }
+      );
+    }
+
     const model = "claude-haiku-4-5-20251001";
+    console.log(
+      `Anthropic messages before fetch: length=${effectiveMessages.length} lastRole=${lastMsg.role}`
+    );
     console.log(
       "Anthropic messages (final cleaned):",
       JSON.stringify(effectiveMessages, null, 2)
