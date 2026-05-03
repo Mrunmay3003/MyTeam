@@ -228,7 +228,7 @@ export default function DashboardPage() {
     const fallbackLookup = await supabase
       .from("workspaces")
       .select("id")
-      .eq("owner_id", currentUserId)
+      .eq("owner_user_id", currentUserId)
       .limit(1)
       .maybeSingle();
 
@@ -244,7 +244,7 @@ export default function DashboardPage() {
 
     const createWithOwnerId = await supabase
       .from("workspaces")
-      .insert({ owner_id: currentUserId, name: "MyTeam Workspace" })
+      .insert({ owner_user_id: currentUserId, name: "MyTeam Workspace" })
       .select("id")
       .single();
 
