@@ -11,6 +11,24 @@ function normalizeMessages(messages) {
     }));
 }
 
+/** Merge consecutive same-role turns (newline); drop leading turns until the first is `user`. */
+function dedupeAlternateRoles(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return [];
+  const merged = [];
+  for (const m of messages) {
+    const last = merged[merged.length - 1];
+    if (last && last.role === m.role) {
+      last.content = `${last.content}\n${m.content}`;
+    } else {
+      merged.push({ role: m.role, content: m.content });
+    }
+  }
+  while (merged.length > 0 && merged[0].role !== "user") {
+    merged.shift();
+  }
+  return merged;
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -20,9 +38,11 @@ export async function POST(request) {
     const forceSummary =
       normalizedMessages[normalizedMessages.length - 1]?.content === "SUMMARISE_NOW";
 
-    const effectiveMessages = forceSummary
+    let effectiveMessages = forceSummary
       ? normalizedMessages.slice(0, -1)
       : normalizedMessages;
+
+    effectiveMessages = dedupeAlternateRoles(effectiveMessages);
 
     if (effectiveMessages.length === 0) {
       return Response.json(
@@ -51,6 +71,10 @@ export async function POST(request) {
         : "You are a helpful assistant.";
 
     const model = "claude-haiku-4-5-20251001";
+    console.log(
+      "Anthropic messages (final cleaned):",
+      JSON.stringify(effectiveMessages, null, 2)
+    );
     console.log(
       "Sending to Anthropic:",
       JSON.stringify(
@@ -85,8 +109,19 @@ export async function POST(request) {
     }
 
     const data = await response.json();
+    const content = data?.content;
+    if (content == null || !Array.isArray(content) || content.length === 0) {
+      return Response.json(
+        {
+          error:
+            "Anthropic returned empty content. Raw response: " + JSON.stringify(data),
+        },
+        { status: 502 }
+      );
+    }
+
     const reply =
-      data?.content?.find((item) => item?.type === "text")?.text ??
+      data.content.find((item) => item?.type === "text")?.text ??
       "I could not generate a response.";
 
     return Response.json({ reply });
