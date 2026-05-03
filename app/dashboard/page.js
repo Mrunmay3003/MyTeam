@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
 const PLACEHOLDER_CHATS = ["Creatives", "Dev", "Outreach"];
+const OPENING_MESSAGE =
+  "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
+const AUTO_SUMMARY_EXCHANGES = 6;
+const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
 
 function ChevronLeftIcon({ className }) {
   return (
@@ -66,10 +70,21 @@ function PlusIcon({ className }) {
 export default function DashboardPage() {
   const router = useRouter();
   const [authReady, setAuthReady] = useState(false);
+  const [userId, setUserId] = useState(null);
+  const [workspaceId, setWorkspaceId] = useState(null);
+  const [onboardingChatId, setOnboardingChatId] = useState(null);
+  const [onboardingMessages, setOnboardingMessages] = useState([]);
+  const [onboardingInput, setOnboardingInput] = useState("");
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [onboardingError, setOnboardingError] = useState(null);
+  const [onboardingSuccess, setOnboardingSuccess] = useState(null);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [contextOpen, setContextOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
+  const autoSummaryTriggeredRef = useRef(false);
+  const contextScrollRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,6 +98,7 @@ export default function DashboardPage() {
         router.replace("/auth");
         return;
       }
+      setUserId(session.user.id);
       setAuthReady(true);
     })();
 
@@ -101,11 +117,292 @@ export default function DashboardPage() {
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
 
+  useEffect(() => {
+    if (!authReady || !userId) return;
+    let cancelled = false;
+
+    async function bootstrapOnboarding() {
+      setOnboardingError(null);
+      const workspace = await ensureWorkspace(userId);
+      if (!workspace) {
+        throw new Error("Unable to load workspace.");
+      }
+      if (cancelled) return;
+      setWorkspaceId(workspace.id);
+
+      const chat = await ensureOnboardingChat(workspace.id);
+      if (!chat) {
+        throw new Error("Unable to load onboarding chat.");
+      }
+      if (cancelled) return;
+      setOnboardingChatId(chat.id);
+
+      const { data: existingMessages, error: messagesError } = await supabase
+        .from("messages")
+        .select("id, role, content, created_at")
+        .eq("chat_id", chat.id)
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true });
+
+      if (messagesError) throw messagesError;
+      if (cancelled) return;
+      setOnboardingMessages(existingMessages ?? []);
+
+      if ((existingMessages ?? []).some((m) => m.content?.includes(ONBOARDING_COMPLETE))) {
+        setOnboardingComplete(true);
+      }
+    }
+
+    bootstrapOnboarding().catch((error) => {
+      if (cancelled) return;
+      setOnboardingError(error.message ?? "Failed to load onboarding context.");
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authReady, userId]);
+
+  useEffect(() => {
+    if (!contextScrollRef.current) return;
+    contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight;
+  }, [onboardingMessages, contextOpen]);
+
+  const onboardingUserMessageCount = useMemo(
+    () =>
+      onboardingMessages.filter(
+        (m) => m.role === "user" && m.content && m.content !== "SUMMARISE_NOW"
+      ).length,
+    [onboardingMessages]
+  );
+
+  const remainingExchanges = Math.max(
+    0,
+    AUTO_SUMMARY_EXCHANGES - onboardingUserMessageCount
+  );
+
+  const contextMessages = onboardingMessages.length
+    ? onboardingMessages
+    : [{ id: "opening", role: "assistant", content: OPENING_MESSAGE }];
+
+  useEffect(() => {
+    if (
+      !workspaceId ||
+      !onboardingChatId ||
+      onboardingBusy ||
+      onboardingComplete ||
+      autoSummaryTriggeredRef.current ||
+      onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES
+    ) {
+      return;
+    }
+    autoSummaryTriggeredRef.current = true;
+    submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false }).catch(() => {
+      autoSummaryTriggeredRef.current = false;
+    });
+  }, [
+    onboardingBusy,
+    onboardingChatId,
+    onboardingComplete,
+    onboardingUserMessageCount,
+    workspaceId,
+  ]);
+
   async function handleSignOut() {
     setMenuOpen(false);
     await supabase.auth.signOut();
     router.replace("/auth");
     router.refresh();
+  }
+
+  async function ensureWorkspace(currentUserId) {
+    const directLookup = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("user_id", currentUserId)
+      .limit(1)
+      .maybeSingle();
+
+    if (directLookup.data) return directLookup.data;
+
+    const fallbackLookup = await supabase
+      .from("workspaces")
+      .select("id")
+      .eq("owner_id", currentUserId)
+      .limit(1)
+      .maybeSingle();
+
+    if (fallbackLookup.data) return fallbackLookup.data;
+
+    const createWithUserId = await supabase
+      .from("workspaces")
+      .insert({ user_id: currentUserId, name: "MyTeam Workspace" })
+      .select("id")
+      .single();
+
+    if (!createWithUserId.error) return createWithUserId.data;
+
+    const createWithOwnerId = await supabase
+      .from("workspaces")
+      .insert({ owner_id: currentUserId, name: "MyTeam Workspace" })
+      .select("id")
+      .single();
+
+    if (!createWithOwnerId.error) return createWithOwnerId.data;
+
+    throw createWithOwnerId.error;
+  }
+
+  async function ensureOnboardingChat(currentWorkspaceId) {
+    const existing = await supabase
+      .from("chats")
+      .select("id")
+      .eq("workspace_id", currentWorkspaceId)
+      .eq("type", "onboarding")
+      .limit(1)
+      .maybeSingle();
+
+    if (existing.data) return existing.data;
+
+    const created = await supabase
+      .from("chats")
+      .insert({
+        workspace_id: currentWorkspaceId,
+        type: "onboarding",
+        title: "Business Context Onboarding",
+      })
+      .select("id")
+      .single();
+
+    if (created.error) throw created.error;
+    return created.data;
+  }
+
+  function parseOnboardingPayload(replyText) {
+    const markerIndex = replyText.indexOf(ONBOARDING_COMPLETE);
+    if (markerIndex < 0) return null;
+    const afterMarker = replyText.slice(markerIndex + ONBOARDING_COMPLETE.length).trim();
+    const firstBrace = afterMarker.indexOf("{");
+    const lastBrace = afterMarker.lastIndexOf("}");
+    if (firstBrace < 0 || lastBrace < 0 || lastBrace < firstBrace) return null;
+    const jsonText = afterMarker.slice(firstBrace, lastBrace + 1);
+    return JSON.parse(jsonText);
+  }
+
+  async function saveBusinessMemory(currentWorkspaceId, payload) {
+    const upsertProfile = await supabase.from("business_memory").upsert(
+      {
+        workspace_id: currentWorkspaceId,
+        profile: payload,
+      },
+      { onConflict: "workspace_id" }
+    );
+
+    if (!upsertProfile.error) return;
+
+    const upsertExpanded = await supabase.from("business_memory").upsert(
+      {
+        workspace_id: currentWorkspaceId,
+        ...payload,
+      },
+      { onConflict: "workspace_id" }
+    );
+
+    if (upsertExpanded.error) throw upsertExpanded.error;
+  }
+
+  const submitOnboardingMessage = useCallback(async (content, options = {}) => {
+    const { showControlMessage = true } = options;
+    if (!workspaceId || !onboardingChatId || onboardingBusy) return;
+
+    const trimmed = content.trim();
+    if (!trimmed) return;
+
+    setOnboardingError(null);
+    setOnboardingSuccess(null);
+    setOnboardingBusy(true);
+
+    let nextMessages = onboardingMessages;
+    const shouldPersistUserMessage = trimmed !== "SUMMARISE_NOW";
+
+    try {
+      if (shouldPersistUserMessage) {
+        const insertedUserMessage = await supabase
+          .from("messages")
+          .insert({
+            chat_id: onboardingChatId,
+            role: "user",
+            content: trimmed,
+          })
+          .select("id, role, content, created_at")
+          .single();
+
+        if (insertedUserMessage.error) throw insertedUserMessage.error;
+
+        nextMessages = [...onboardingMessages, insertedUserMessage.data];
+        setOnboardingMessages(nextMessages);
+      } else if (showControlMessage) {
+        nextMessages = [...onboardingMessages, { role: "user", content: trimmed }];
+      }
+
+      const apiMessages = nextMessages.map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.content,
+      }));
+
+      const controlMessages =
+        trimmed === "SUMMARISE_NOW" ? [...apiMessages, { role: "user", content: "SUMMARISE_NOW" }] : apiMessages;
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          messages: controlMessages,
+          workspaceId,
+          chatType: "onboarding",
+        }),
+      });
+
+      const payload = await response.json();
+      if (!response.ok || !payload.reply) {
+        throw new Error(payload.error ?? "Failed to get assistant response.");
+      }
+
+      const insertedAssistantMessage = await supabase
+        .from("messages")
+        .insert({
+          chat_id: onboardingChatId,
+          role: "assistant",
+          content: payload.reply,
+        })
+        .select("id, role, content, created_at")
+        .single();
+
+      if (insertedAssistantMessage.error) throw insertedAssistantMessage.error;
+
+      setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
+
+      if (payload.reply.includes(ONBOARDING_COMPLETE)) {
+        const parsed = parseOnboardingPayload(payload.reply);
+        if (!parsed) {
+          throw new Error("Could not parse onboarding summary payload.");
+        }
+        await saveBusinessMemory(workspaceId, parsed);
+        setOnboardingSuccess("Business profile saved!");
+        setOnboardingComplete(true);
+        window.setTimeout(() => setContextOpen(false), 2000);
+      }
+    } catch (error) {
+      setOnboardingError(error.message ?? "Something went wrong.");
+    } finally {
+      setOnboardingBusy(false);
+      setOnboardingInput("");
+    }
+  }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
+
+  async function handleOnboardingSubmit(event) {
+    event.preventDefault();
+    await submitOnboardingMessage(onboardingInput);
   }
 
   if (!authReady) {
@@ -256,11 +553,73 @@ export default function DashboardPage() {
             )}
           </div>
           {contextOpen && (
-            <div className="min-h-0 flex-1 overflow-y-auto p-3">
-              <p className="text-sm leading-relaxed text-zinc-500">
-                Placeholder: add company goals, tone, and key facts your AI
-                managers should keep in mind when coordinating with each team.
-              </p>
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+                {contextMessages.map((message, index) => {
+                  const key = message.id ?? `${message.role}-${index}`;
+                  const assistant = message.role === "assistant";
+                  return (
+                    <div
+                      key={key}
+                      className={`max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                        assistant
+                          ? "mr-auto bg-zinc-800 text-zinc-200"
+                          : "ml-auto bg-zinc-700 text-zinc-100"
+                      }`}
+                    >
+                      {message.content}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="shrink-0 border-t border-zinc-800 p-3">
+                {onboardingError && (
+                  <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">
+                    {onboardingError}
+                  </p>
+                )}
+                {onboardingSuccess && (
+                  <p className="mb-2 rounded-md border border-emerald-900/50 bg-emerald-950/40 px-2.5 py-1.5 text-xs text-emerald-200">
+                    {onboardingSuccess}
+                  </p>
+                )}
+
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-[11px] text-zinc-500">
+                    {remainingExchanges} exchanges before auto-summary
+                  </p>
+                  {onboardingUserMessageCount >= 2 && !onboardingComplete && (
+                    <button
+                      type="button"
+                      onClick={() => submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false })}
+                      disabled={onboardingBusy}
+                      className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Summarise Now
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={onboardingInput}
+                    onChange={(event) => setOnboardingInput(event.target.value)}
+                    placeholder="Reply..."
+                    disabled={onboardingBusy || onboardingComplete}
+                    className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none ring-zinc-600 focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50"
+                    aria-label="Business context onboarding input"
+                  />
+                  <button
+                    type="submit"
+                    disabled={onboardingBusy || onboardingComplete || !onboardingInput.trim()}
+                    className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Send
+                  </button>
+                </form>
+              </div>
             </div>
           )}
         </aside>
