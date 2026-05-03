@@ -323,37 +323,6 @@ export default function DashboardPage() {
     return JSON.parse(jsonText);
   }
 
-  async function saveBusinessMemory(currentWorkspaceId, payload) {
-    const profileRow = {
-      workspace_id: currentWorkspaceId,
-      profile: payload,
-    };
-    console.log("[business_memory] upsert (profile column)", profileRow);
-    const upsertProfile = await supabase.from("business_memory").upsert(profileRow, {
-      onConflict: "workspace_id",
-    });
-
-    if (upsertProfile.error) {
-      console.log("[business_memory] upsert error (profile column)", upsertProfile.error);
-    } else {
-      return;
-    }
-
-    const expandedRow = {
-      workspace_id: currentWorkspaceId,
-      ...payload,
-    };
-    console.log("[business_memory] upsert (expanded columns)", expandedRow);
-    const upsertExpanded = await supabase.from("business_memory").upsert(expandedRow, {
-      onConflict: "workspace_id",
-    });
-
-    if (upsertExpanded.error) {
-      console.log("[business_memory] upsert error (expanded columns)", upsertExpanded.error);
-      throw upsertExpanded.error;
-    }
-  }
-
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
     if (!workspaceId || !onboardingChatId || onboardingBusy) {
@@ -447,12 +416,19 @@ export default function DashboardPage() {
         const wid = workspaceId;
         void (async () => {
           try {
-            const parsed = parseOnboardingPayload(payload.reply);
-            if (parsed && wid) {
-              await saveBusinessMemory(wid, parsed);
-            }
+            const parsedJson = parseOnboardingPayload(payload.reply);
+            if (!parsedJson || !wid) return;
+            const { error } = await supabase.from("business_memory").upsert(
+              {
+                workspace_id: wid,
+                content: parsedJson,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "workspace_id" }
+            );
+            if (error) console.error("Save failed:", error);
           } catch {
-            /* silent background update */
+            /* parse errors — no UI */
           }
         })();
       }
