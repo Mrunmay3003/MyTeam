@@ -11,12 +11,24 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
+  const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  function isLikelyExistingAccountError(signUpError) {
+    const msg = (signUpError.message ?? "").toLowerCase();
+    return (
+      msg.includes("already") ||
+      msg.includes("registered") ||
+      msg.includes("exists") ||
+      msg.includes("user already")
+    );
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setError(null);
     setInfo(null);
+    setNotice(null);
     setLoading(true);
 
     try {
@@ -26,9 +38,27 @@ export default function AuthPage() {
           password,
         });
         if (signUpError) {
-          setError(signUpError.message);
+          if (isLikelyExistingAccountError(signUpError)) {
+            setNotice(
+              "An account with this email already exists. Use Login with your password."
+            );
+            setMode("login");
+          } else {
+            setError(signUpError.message);
+          }
           return;
         }
+
+        // Duplicate signup: Supabase returns a user with no new identities (security / existing email).
+        const identities = data?.user?.identities ?? [];
+        if (data?.user && identities.length === 0) {
+          setNotice(
+            "This email is already registered. Please sign in instead."
+          );
+          setMode("login");
+          return;
+        }
+
         if (data.session) {
           router.push("/dashboard");
           router.refresh();
@@ -79,6 +109,7 @@ export default function AuthPage() {
               setMode("login");
               setError(null);
               setInfo(null);
+              setNotice(null);
             }}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               mode === "login"
@@ -96,6 +127,7 @@ export default function AuthPage() {
               setMode("signup");
               setError(null);
               setInfo(null);
+              setNotice(null);
             }}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               mode === "signup"
@@ -156,6 +188,14 @@ export default function AuthPage() {
               role="alert"
             >
               {error}
+            </p>
+          )}
+          {notice && (
+            <p
+              className="rounded-lg border border-amber-900/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100"
+              role="status"
+            >
+              {notice}
             </p>
           )}
           {info && (
