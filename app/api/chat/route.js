@@ -24,12 +24,41 @@ export async function POST(request) {
       ? normalizedMessages.slice(0, -1)
       : normalizedMessages;
 
+    if (effectiveMessages.length === 0) {
+      return Response.json(
+        { error: "No messages to send to the model (empty conversation)." },
+        { status: 400 }
+      );
+    }
+
+    const emptyContentIndex = effectiveMessages.findIndex(
+      (m) => typeof m.content !== "string" || !m.content.trim()
+    );
+    if (emptyContentIndex >= 0) {
+      return Response.json(
+        {
+          error: `Message at index ${emptyContentIndex} has empty content; refusing to call the API.`,
+        },
+        { status: 400 }
+      );
+    }
+
     const system =
       chatType === "onboarding"
         ? forceSummary
           ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with the required ONBOARDING_COMPLETE, JSON object, and SUGGESTIONS line format.`
           : ONBOARDING_SYSTEM_PROMPT
         : "You are a helpful assistant.";
+
+    const model = "claude-haiku-4-5-20251001";
+    console.log(
+      "Sending to Anthropic:",
+      JSON.stringify(
+        { model, messages: effectiveMessages, system: system.slice(0, 100) },
+        null,
+        2
+      )
+    );
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -39,7 +68,7 @@ export async function POST(request) {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model,
         max_tokens: 2000,
         system,
         messages: effectiveMessages,
@@ -48,6 +77,7 @@ export async function POST(request) {
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("Anthropic error:", response.status, errorText);
       return Response.json(
         { error: `Anthropic API error: ${response.status} ${errorText}` },
         { status: 500 }
@@ -61,6 +91,7 @@ export async function POST(request) {
 
     return Response.json({ reply });
   } catch (error) {
+    console.error("Chat route error:", error);
     return Response.json(
       { error: error instanceof Error ? error.message : "Unexpected error" },
       { status: 500 }

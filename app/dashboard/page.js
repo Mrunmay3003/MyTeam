@@ -432,7 +432,24 @@ export default function DashboardPage() {
 
       const payload = await response.json();
       if (!response.ok || !payload.reply) {
-        throw new Error(payload.error ?? "Failed to get assistant response.");
+        const errMsg =
+          (typeof payload.error === "string" && payload.error.trim()) ||
+          `Chat request failed (${response.status}).`;
+        const errInsert = await supabase
+          .from("messages")
+          .insert({
+            chat_id: onboardingChatId,
+            role: "assistant",
+            content: errMsg,
+          })
+          .select("id, role, content, created_at")
+          .single();
+        if (errInsert.error) {
+          setOnboardingError(errMsg);
+        } else {
+          setOnboardingMessages((prev) => [...prev, errInsert.data]);
+        }
+        return;
       }
 
       const insertedAssistantMessage = await supabase
