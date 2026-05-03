@@ -86,7 +86,6 @@ export default function DashboardPage() {
   const autoSummaryTriggeredRef = useRef(false);
   const contextScrollRef = useRef(null);
   const collapseTimeoutRef = useRef(null);
-  const onboardingCompleteRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,10 +125,6 @@ export default function DashboardPage() {
       }
     };
   }, []);
-
-  useEffect(() => {
-    onboardingCompleteRef.current = onboardingComplete;
-  }, [onboardingComplete]);
 
   useEffect(() => {
     if (!authReady || !userId) return;
@@ -363,13 +358,7 @@ export default function DashboardPage() {
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
-    if (
-      !workspaceId ||
-      !onboardingChatId ||
-      onboardingBusy ||
-      onboardingComplete ||
-      onboardingCompleteRef.current
-    ) {
+    if (!workspaceId || !onboardingChatId || onboardingBusy) {
       return;
     }
 
@@ -426,8 +415,6 @@ export default function DashboardPage() {
         throw new Error(payload.error ?? "Failed to get assistant response.");
       }
 
-      if (onboardingCompleteRef.current) return;
-
       const insertedAssistantMessage = await supabase
         .from("messages")
         .insert({
@@ -443,7 +430,6 @@ export default function DashboardPage() {
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
       if (payload.reply.includes(ONBOARDING_COMPLETE)) {
-        onboardingCompleteRef.current = true;
         autoSummaryTriggeredRef.current = true;
         setOnboardingComplete(true);
 
@@ -461,7 +447,7 @@ export default function DashboardPage() {
       setOnboardingBusy(false);
       setOnboardingInput("");
     }
-  }, [onboardingBusy, onboardingChatId, onboardingComplete, onboardingMessages, workspaceId]);
+  }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
 
   useEffect(() => {
     if (onboardingSuccess !== "Business profile saved!") return;
@@ -681,13 +667,13 @@ export default function DashboardPage() {
                     value={onboardingInput}
                     onChange={(event) => setOnboardingInput(event.target.value)}
                     placeholder="Reply..."
-                    disabled={onboardingBusy || onboardingComplete}
+                    disabled={onboardingBusy}
                     className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none ring-zinc-600 focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50"
                     aria-label="Business context onboarding input"
                   />
                   <button
                     type="submit"
-                    disabled={onboardingBusy || onboardingComplete || !onboardingInput.trim()}
+                    disabled={onboardingBusy || !onboardingInput.trim()}
                     className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Send
