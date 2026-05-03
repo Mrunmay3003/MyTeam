@@ -86,6 +86,7 @@ export default function DashboardPage() {
   const autoSummaryTriggeredRef = useRef(false);
   const contextScrollRef = useRef(null);
   const collapseTimeoutRef = useRef(null);
+  const onboardingCompleteRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,6 +126,10 @@ export default function DashboardPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    onboardingCompleteRef.current = onboardingComplete;
+  }, [onboardingComplete]);
 
   useEffect(() => {
     if (!authReady || !userId) return;
@@ -292,9 +297,45 @@ export default function DashboardPage() {
     if (markerIndex < 0) return null;
     const afterMarker = replyText.slice(markerIndex + ONBOARDING_COMPLETE.length).trim();
     const firstBrace = afterMarker.indexOf("{");
-    const lastBrace = afterMarker.lastIndexOf("}");
-    if (firstBrace < 0 || lastBrace < 0 || lastBrace < firstBrace) return null;
-    const jsonText = afterMarker.slice(firstBrace, lastBrace + 1);
+    if (firstBrace < 0) return null;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    let endIndex = -1;
+
+    for (let i = firstBrace; i < afterMarker.length; i += 1) {
+      const char = afterMarker[i];
+
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (char === "\\") {
+          escaped = true;
+        } else if (char === '"') {
+          inString = false;
+        }
+        continue;
+      }
+
+      if (char === '"') {
+        inString = true;
+        continue;
+      }
+
+      if (char === "{") {
+        depth += 1;
+      } else if (char === "}") {
+        depth -= 1;
+        if (depth === 0) {
+          endIndex = i;
+          break;
+        }
+      }
+    }
+
+    if (endIndex < 0) return null;
+    const jsonText = afterMarker.slice(firstBrace, endIndex + 1);
     return JSON.parse(jsonText);
   }
 
@@ -322,7 +363,15 @@ export default function DashboardPage() {
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
-    if (!workspaceId || !onboardingChatId || onboardingBusy || onboardingComplete) return;
+    if (
+      !workspaceId ||
+      !onboardingChatId ||
+      onboardingBusy ||
+      onboardingComplete ||
+      onboardingCompleteRef.current
+    ) {
+      return;
+    }
 
     const trimmed = content.trim();
     if (!trimmed) return;
@@ -377,6 +426,8 @@ export default function DashboardPage() {
         throw new Error(payload.error ?? "Failed to get assistant response.");
       }
 
+      if (onboardingCompleteRef.current) return;
+
       const insertedAssistantMessage = await supabase
         .from("messages")
         .insert({
@@ -392,20 +443,16 @@ export default function DashboardPage() {
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
       if (payload.reply.includes(ONBOARDING_COMPLETE)) {
+        onboardingCompleteRef.current = true;
+        autoSummaryTriggeredRef.current = true;
+        setOnboardingComplete(true);
+
         const parsed = parseOnboardingPayload(payload.reply);
         if (!parsed) {
           throw new Error("Could not parse onboarding summary payload.");
         }
         await saveBusinessMemory(workspaceId, parsed);
-        autoSummaryTriggeredRef.current = true;
         setOnboardingSuccess("Business profile saved!");
-        setOnboardingComplete(true);
-        if (collapseTimeoutRef.current) {
-          window.clearTimeout(collapseTimeoutRef.current);
-        }
-        collapseTimeoutRef.current = window.setTimeout(() => {
-          setContextOpen(false);
-        }, 2000);
         return;
       }
     } catch (error) {
@@ -415,6 +462,17 @@ export default function DashboardPage() {
       setOnboardingInput("");
     }
   }, [onboardingBusy, onboardingChatId, onboardingComplete, onboardingMessages, workspaceId]);
+
+  useEffect(() => {
+    if (onboardingSuccess !== "Business profile saved!") return;
+    setContextOpen(true);
+    if (collapseTimeoutRef.current) {
+      window.clearTimeout(collapseTimeoutRef.current);
+    }
+    collapseTimeoutRef.current = window.setTimeout(() => {
+      setContextOpen(false);
+    }, 2000);
+  }, [onboardingSuccess]);
 
   async function handleOnboardingSubmit(event) {
     event.preventDefault();
