@@ -362,30 +362,30 @@ export default function DashboardPage() {
 
       const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
       if (oc !== -1) {
-        const wid = workspaceId;
-        void (async () => {
-          try {
-            const raw = payload.reply.slice(oc + "ONBOARDING_COMPLETE".length);
-            const cleaned = raw
-              .trim()
-              .replace(/^```(?:json)?\s*/i, "")
-              .replace(/\s*```\s*$/, "")
-              .trim();
-            const start = cleaned.indexOf("{");
-            const end = cleaned.lastIndexOf("}");
-            if (start !== -1 && end !== -1) {
-              const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
-              const { error } = await supabase.from("business_memory").upsert(
-                { workspace_id: wid, content: parsedJson, updated_at: new Date().toISOString() },
-                { onConflict: "workspace_id" }
-              );
-              if (error) console.error("Save failed:", error);
-              else console.log("Memory saved for workspace:", wid);
-            }
-          } catch (e) {
-            console.error("Parse error:", e);
+        try {
+          const raw = payload.reply.slice(oc + "ONBOARDING_COMPLETE".length);
+          const cleaned = raw
+            .trim()
+            .replace(/^```(?:json)?\s*/i, "")
+            .replace(/\s*```\s*$/, "")
+            .trim();
+          const start = cleaned.indexOf("{");
+          const end = cleaned.lastIndexOf("}");
+          if (start !== -1 && end !== -1) {
+            const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
+            const { error } = await supabase.from("business_memory").upsert(
+              {
+                workspace_id: workspaceId,
+                content: parsedJson,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "workspace_id" }
+            );
+            if (error) console.error("Save failed:", error);
           }
-        })();
+        } catch (e) {
+          console.error("Parse error:", e);
+        }
       }
     } catch (error) {
       setOnboardingError(error.message ?? "Something went wrong.");
