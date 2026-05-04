@@ -11,16 +11,6 @@ const SUMMARY_CONFIRMATION_MESSAGE =
   "Summary generated. Your business profile has been saved.";
 const AUTO_SUMMARY_EXCHANGES = 5;
 const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
-const MEMORY_UPDATED_SUFFIX = "\n\n[📋 Memory Updated]";
-
-/** Strip ONBOARDING_COMPLETE + JSON from assistant UI; append memory indicator. */
-function formatOnboardingAssistantDisplay(content) {
-  if (typeof content !== "string" || !content.includes(ONBOARDING_COMPLETE)) {
-    return content;
-  }
-  const head = content.slice(0, content.indexOf(ONBOARDING_COMPLETE)).trimEnd();
-  return head ? `${head}${MEMORY_UPDATED_SUFFIX}` : "[📋 Memory Updated]";
-}
 
 /** Remove markdown ``` / ```json code fences so JSON.parse sees raw `{ ... }`. */
 function stripMarkdownJsonFence(text) {
@@ -655,19 +645,16 @@ export default function DashboardPage() {
                 {onboardingMessages.map((message, index) => {
                   const key = message.id ?? `${message.role}-${index}`;
                   const assistant = message.role === "assistant";
-                  const displayContent = assistant
-                    ? formatOnboardingAssistantDisplay(message.content)
-                    : message.content;
                   return (
                     <div
                       key={key}
-                      className={`max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap ${
+                      className={`max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
                         assistant
                           ? "mr-auto bg-zinc-800 text-zinc-200"
                           : "ml-auto bg-zinc-700 text-zinc-100"
                       }`}
                     >
-                      {displayContent}
+                      {message.content}
                     </div>
                   );
                 })}
