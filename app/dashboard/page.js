@@ -10,17 +10,6 @@ const OPENING_MESSAGE =
 const SUMMARY_CONFIRMATION_MESSAGE =
   "Summary generated. Your business profile has been saved.";
 const AUTO_SUMMARY_EXCHANGES = 5;
-const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
-
-/** Remove markdown ``` / ```json code fences so JSON.parse sees raw `{ ... }`. */
-function stripMarkdownJsonFence(text) {
-  return text
-    .trim()
-    .replace(/^`{3}(?:json)?\s*/i, "")
-    .replace(/\s*`{3}\s*$/, "")
-    .trim();
-}
-
 function ChevronLeftIcon({ className }) {
   return (
     <svg
@@ -282,55 +271,6 @@ export default function DashboardPage() {
     return created.data;
   }
 
-  function parseOnboardingPayload(replyText) {
-    const markerIndex = replyText.indexOf(ONBOARDING_COMPLETE);
-    if (markerIndex < 0) return null;
-    const afterMarker = stripMarkdownJsonFence(
-      replyText.slice(markerIndex + ONBOARDING_COMPLETE.length)
-    );
-    const firstBrace = afterMarker.indexOf("{");
-    if (firstBrace < 0) return null;
-
-    let depth = 0;
-    let inString = false;
-    let escaped = false;
-    let endIndex = -1;
-
-    for (let i = firstBrace; i < afterMarker.length; i += 1) {
-      const char = afterMarker[i];
-
-      if (inString) {
-        if (escaped) {
-          escaped = false;
-        } else if (char === "\\") {
-          escaped = true;
-        } else if (char === '"') {
-          inString = false;
-        }
-        continue;
-      }
-
-      if (char === '"') {
-        inString = true;
-        continue;
-      }
-
-      if (char === "{") {
-        depth += 1;
-      } else if (char === "}") {
-        depth -= 1;
-        if (depth === 0) {
-          endIndex = i;
-          break;
-        }
-      }
-    }
-
-    if (endIndex < 0) return null;
-    const jsonText = afterMarker.slice(firstBrace, endIndex + 1);
-    return JSON.parse(jsonText);
-  }
-
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
     if (!workspaceId || !onboardingChatId || onboardingBusy) {
@@ -420,23 +360,30 @@ export default function DashboardPage() {
 
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
-      if (payload.reply.includes(ONBOARDING_COMPLETE)) {
+      const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
+      if (oc !== -1) {
         const wid = workspaceId;
         void (async () => {
           try {
-            const parsedJson = parseOnboardingPayload(payload.reply);
-            if (!parsedJson || !wid) return;
-            const { error } = await supabase.from("business_memory").upsert(
-              {
-                workspace_id: wid,
-                content: parsedJson,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "workspace_id" }
-            );
-            if (error) console.error("Save failed:", error);
-          } catch {
-            /* parse errors — no UI */
+            const raw = payload.reply.slice(oc + "ONBOARDING_COMPLETE".length);
+            const cleaned = raw
+              .trim()
+              .replace(/^```(?:json)?\s*/i, "")
+              .replace(/\s*```\s*$/, "")
+              .trim();
+            const start = cleaned.indexOf("{");
+            const end = cleaned.lastIndexOf("}");
+            if (start !== -1 && end !== -1) {
+              const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
+              const { error } = await supabase.from("business_memory").upsert(
+                { workspace_id: wid, content: parsedJson, updated_at: new Date().toISOString() },
+                { onConflict: "workspace_id" }
+              );
+              if (error) console.error("Save failed:", error);
+              else console.log("Memory saved for workspace:", wid);
+            }
+          } catch (e) {
+            console.error("Parse error:", e);
           }
         })();
       }
