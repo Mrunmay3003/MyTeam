@@ -95,6 +95,8 @@ export async function POST(request) {
       );
     }
 
+    effectiveMessages = effectiveMessages.slice(-8);
+
     const model = "claude-haiku-4-5-20251001";
     console.log(
       `Anthropic messages before fetch: length=${effectiveMessages.length} lastRole=${lastMsg.role}`
