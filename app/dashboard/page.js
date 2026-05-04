@@ -94,6 +94,7 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const autoSummaryTriggeredRef = useRef(false);
+  const autoSummaryCompletedRef = useRef(false);
   const contextScrollRef = useRef(null);
 
   useEffect(() => {
@@ -193,12 +194,13 @@ export default function DashboardPage() {
       !onboardingChatId ||
       onboardingBusy ||
       autoSummaryTriggeredRef.current ||
+      autoSummaryCompletedRef.current ||
       onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES
     ) {
       return;
     }
     autoSummaryTriggeredRef.current = true;
-    submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false }).catch(() => {
+    void submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false }).catch(() => {
       autoSummaryTriggeredRef.current = false;
     });
   }, [onboardingBusy, onboardingChatId, onboardingUserMessageCount, workspaceId]);
@@ -333,11 +335,16 @@ export default function DashboardPage() {
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
+    const trimmed = typeof content === "string" ? content.trim() : "";
+
+    if (autoSummaryTriggeredRef.current && trimmed !== "SUMMARISE_NOW") {
+      return;
+    }
+
     if (!workspaceId || !onboardingChatId || onboardingBusy) {
       return;
     }
 
-    const trimmed = content.trim();
     if (!trimmed) return;
 
     setOnboardingError(null);
@@ -420,6 +427,10 @@ export default function DashboardPage() {
 
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
+      if (trimmed === "SUMMARISE_NOW") {
+        autoSummaryCompletedRef.current = true;
+      }
+
       if (payload.reply.includes(ONBOARDING_COMPLETE)) {
         const wid = workspaceId;
         void (async () => {
@@ -445,6 +456,9 @@ export default function DashboardPage() {
     } finally {
       setOnboardingBusy(false);
       setOnboardingInput("");
+      if (trimmed === "SUMMARISE_NOW") {
+        autoSummaryTriggeredRef.current = false;
+      }
     }
   }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
 

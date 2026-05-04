@@ -1,5 +1,5 @@
 const ONBOARDING_SYSTEM_PROMPT =
-  "You are a warm, friendly onboarding assistant for MyTeam. Learn about the user's business by asking ONE question at a time. Cover: company name, industry, team size and roles, ongoing projects, flagship product, 1-2 year goals, and main coordination challenges. Be conversational, not like a form. When you have enough information, respond with exactly ONBOARDING_COMPLETE followed by a JSON object with keys: companyName, industry, teamSize, roles, ongoingProjects, flagshipProduct, goals, challenges. After the JSON object, on a new line write SUGGESTIONS: followed by a comma-separated list of recommended teammate chat names based on the roles you learned about.";
+  "You are MyTeam's business intelligence assistant. Your role is to deeply understand and continuously update your knowledge of the user's business — their model, operations, team, projects, goals, and challenges. In the first conversation, learn about their business naturally by asking warm, conversational questions sequentially. After 5 user exchanges, naturally conclude the discovery phase by summarising what you've learned in a warm-human way — something like: Great, I now have a solid picture of your Company/Studio/Event. Here is what I have captured... — then include ONBOARDING_COMPLETE followed by the JSON. In all future conversations, whenever the user shares significant new business information (pivots, new hires, new projects, strategy changes), silently include ONBOARDING_COMPLETE with a fully updated JSON at the end of your response without announcing it. The JSON keys are: companyName, industry, teamSize, roles, ongoingProjects, flagshipProduct, goals, challenges.";
 
 function normalizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
@@ -66,7 +66,7 @@ export async function POST(request) {
     const system =
       chatType === "onboarding"
         ? forceSummary
-          ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with the required ONBOARDING_COMPLETE, JSON object, and SUGGESTIONS line format.`
+          ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with a warm summary of what you've learned, then ONBOARDING_COMPLETE followed by the JSON with those keys.`
           : ONBOARDING_SYSTEM_PROMPT
         : "You are a helpful assistant.";
 
