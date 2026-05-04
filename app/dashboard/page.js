@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 const PLACEHOLDER_CHATS = ["Creatives", "Dev", "Outreach"];
 const OPENING_MESSAGE =
   "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
+const SUMMARY_CONFIRMATION_MESSAGE =
+  "Summary generated. Your business profile has been saved.";
 const AUTO_SUMMARY_EXCHANGES = 5;
 const ONBOARDING_COMPLETE = "ONBOARDING_COMPLETE";
 
@@ -86,6 +88,7 @@ export default function DashboardPage() {
   const [onboardingInput, setOnboardingInput] = useState("");
   const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [onboardingError, setOnboardingError] = useState(null);
+  const [summariseConfirmLoading, setSummariseConfirmLoading] = useState(false);
   const [selectedChat, setSelectedChat] = useState(null);
   const [contextOpen, setContextOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -184,10 +187,6 @@ export default function DashboardPage() {
     AUTO_SUMMARY_EXCHANGES - onboardingUserMessageCount
   );
 
-  const contextMessages = onboardingMessages.length
-    ? onboardingMessages
-    : [{ id: "opening", role: "assistant", content: OPENING_MESSAGE }];
-
   useEffect(() => {
     if (
       !workspaceId ||
@@ -271,6 +270,15 @@ export default function DashboardPage() {
       .single();
 
     if (created.error) throw created.error;
+
+    const { error: openingError } = await supabase.from("messages").insert({
+      chat_id: created.data.id,
+      role: "assistant",
+      content: OPENING_MESSAGE,
+    });
+
+    if (openingError) throw openingError;
+
     return created.data;
   }
 
@@ -440,6 +448,31 @@ export default function DashboardPage() {
     }
   }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
 
+  async function handleSummariseNowClick() {
+    if (!onboardingChatId || onboardingBusy || summariseConfirmLoading) return;
+
+    setSummariseConfirmLoading(true);
+    setOnboardingError(null);
+    try {
+      const inserted = await supabase
+        .from("messages")
+        .insert({
+          chat_id: onboardingChatId,
+          role: "assistant",
+          content: SUMMARY_CONFIRMATION_MESSAGE,
+        })
+        .select("id, role, content, created_at")
+        .single();
+
+      if (inserted.error) throw inserted.error;
+      setOnboardingMessages((prev) => [...prev, inserted.data]);
+    } catch (error) {
+      setOnboardingError(error.message ?? "Failed to add confirmation message.");
+    } finally {
+      setSummariseConfirmLoading(false);
+    }
+  }
+
   async function handleOnboardingSubmit(event) {
     event.preventDefault();
     await submitOnboardingMessage(onboardingInput);
@@ -595,7 +628,7 @@ export default function DashboardPage() {
           {contextOpen && (
             <div className="flex min-h-0 flex-1 flex-col">
               <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-                {contextMessages.map((message, index) => {
+                {onboardingMessages.map((message, index) => {
                   const key = message.id ?? `${message.role}-${index}`;
                   const assistant = message.role === "assistant";
                   return (
@@ -626,8 +659,8 @@ export default function DashboardPage() {
                   {onboardingUserMessageCount >= 2 && (
                     <button
                       type="button"
-                      onClick={() => submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false })}
-                      disabled={onboardingBusy}
+                      onClick={() => void handleSummariseNowClick()}
+                      disabled={onboardingBusy || summariseConfirmLoading}
                       className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Summarise Now
