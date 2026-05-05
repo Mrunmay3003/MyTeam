@@ -83,7 +83,7 @@ export async function POST(request) {
       .from("workspaces")
       .select("id")
       .eq("id", workspaceId.trim())
-      .or(`user_id.eq.${user.id},owner_user_id.eq.${user.id}`)
+      .eq("owner_user_id", user.id)
       .maybeSingle();
 
     if (workspaceError) {
