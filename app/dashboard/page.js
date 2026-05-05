@@ -10,6 +10,8 @@ const OPENING_MESSAGE =
 const SUMMARY_CONFIRMATION_MESSAGE =
   "Summary generated. Your business profile has been saved.";
 const AUTO_SUMMARY_EXCHANGES = 5;
+const ONBOARDING_COMPLETE_DISPLAY_MESSAGE =
+  "✅ Business Profile saved! We will update it from time to time as we discuss here in this Business Context panel.";
 function ChevronLeftIcon({ className }) {
   return (
     <svg
@@ -166,7 +168,11 @@ export default function DashboardPage() {
   const onboardingUserMessageCount = useMemo(
     () =>
       onboardingMessages.filter(
-        (m) => m.role === "user" && m.content && m.content !== "SUMMARISE_NOW"
+        (m) =>
+          m.role === "user" &&
+          typeof m.content === "string" &&
+          m.content.trim() &&
+          m.content !== "SUMMARISE_NOW"
       ).length,
     [onboardingMessages]
   );
@@ -351,12 +357,17 @@ export default function DashboardPage() {
         return;
       }
 
+      const onboardingCompleted = payload.reply.includes("ONBOARDING_COMPLETE");
+      const assistantDisplayContent = onboardingCompleted
+        ? ONBOARDING_COMPLETE_DISPLAY_MESSAGE
+        : payload.reply;
+
       const insertedAssistantMessage = await supabase
         .from("messages")
         .insert({
           chat_id: onboardingChatId,
           role: "assistant",
-          content: payload.reply,
+          content: assistantDisplayContent,
         })
         .select("id, role, content, created_at")
         .single();
