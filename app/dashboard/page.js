@@ -376,7 +376,7 @@ export default function DashboardPage() {
 
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
-      // ⚠️ DO NOT MODIFY — Business memory save logic. Took significant effort to get working. Touch only if explicitly instructed otherwise ask.
+      // ⚠️ DO NOT MODIFY Business memory save logic. Took significant effort to get working. Touch only if explicitly instructed otherwise ask.
       const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
       console.log("[onboarding debug] ONBOARDING_COMPLETE check:", {
         detected: oc !== -1,
@@ -612,7 +612,7 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={key}
-                      className={`max-w-[92%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                      className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${
                         assistant
                           ? "mr-auto bg-zinc-800 text-zinc-200"
                           : "ml-auto bg-zinc-700 text-zinc-100"
