@@ -7,10 +7,8 @@ import { supabase } from "@/lib/supabase";
 const PLACEHOLDER_CHATS = ["Creatives", "Dev", "Outreach"];
 const OPENING_MESSAGE =
   "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
-const SUMMARY_CONFIRMATION_MESSAGE =
-  "Summary generated. Your business profile has been saved.";
 const AUTO_SUMMARY_EXCHANGES = 5;
-const ONBOARDING_COMPLETE_DISPLAY_MESSAGE =
+const BUSINESS_PROFILE_SAVED_MESSAGE =
   "✅ Business Profile saved! We will update it from time to time as we discuss here in this Business Context panel.";
 function ChevronLeftIcon({ className }) {
   return (
@@ -85,6 +83,7 @@ export default function DashboardPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const autoSummaryTriggeredRef = useRef(false);
+  const businessProfileSaveCompleteRef = useRef(false);
   const contextScrollRef = useRef(null);
 
   useEffect(() => {
@@ -182,22 +181,6 @@ export default function DashboardPage() {
     AUTO_SUMMARY_EXCHANGES - onboardingUserMessageCount
   );
 
-  useEffect(() => {
-    if (
-      !workspaceId ||
-      !onboardingChatId ||
-      onboardingBusy ||
-      autoSummaryTriggeredRef.current ||
-      onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES
-    ) {
-      return;
-    }
-    autoSummaryTriggeredRef.current = true;
-    submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false }).catch(() => {
-      autoSummaryTriggeredRef.current = false;
-    });
-  }, [onboardingBusy, onboardingChatId, onboardingUserMessageCount, workspaceId]);
-
   async function handleSignOut() {
     setMenuOpen(false);
     await supabase.auth.signOut();
@@ -276,6 +259,108 @@ export default function DashboardPage() {
 
     return created.data;
   }
+
+  const saveBusinessMemoryFromReply = useCallback(
+    async (replyText, options = {}) => {
+      const { appendConfirmation = false } = options;
+      const oc = replyText.indexOf("ONBOARDING_COMPLETE");
+      console.log("[onboarding debug] ONBOARDING_COMPLETE check:", {
+        detected: oc !== -1,
+        index: oc,
+      });
+      if (oc === -1) return false;
+
+      const raw = replyText.slice(oc + "ONBOARDING_COMPLETE".length);
+      const cleaned = raw
+        .trim()
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```\s*$/, "")
+        .trim();
+      const start = cleaned.indexOf("{");
+      const end = cleaned.lastIndexOf("}");
+      if (start === -1 || end === -1) return false;
+
+      const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
+      console.log("[onboarding debug] save-business-memory request:", {
+        workspaceId,
+        parsedJson,
+      });
+      const res = await fetch("/api/save-business-memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workspaceId, content: parsedJson }),
+      });
+      const resJson = await res.json().catch(() => ({}));
+      console.log("API response:", res.status, resJson);
+      if (!res.ok) {
+        console.error("Save failed:", resJson?.error ?? res.status, resJson);
+        return false;
+      }
+
+      if (appendConfirmation && !businessProfileSaveCompleteRef.current) {
+        const insertedConfirmation = await supabase
+          .from("messages")
+          .insert({
+            chat_id: onboardingChatId,
+            role: "assistant",
+            content: BUSINESS_PROFILE_SAVED_MESSAGE,
+          })
+          .select("id, role, content, created_at")
+          .single();
+
+        if (insertedConfirmation.error) throw insertedConfirmation.error;
+        businessProfileSaveCompleteRef.current = true;
+        setOnboardingMessages((prev) => [...prev, insertedConfirmation.data]);
+      }
+
+      return true;
+    },
+    [onboardingChatId, workspaceId]
+  );
+
+  const runSilentBackgroundSummary = useCallback(
+    async (messagesForSummary) => {
+      if (
+        !workspaceId ||
+        !onboardingChatId ||
+        autoSummaryTriggeredRef.current ||
+        businessProfileSaveCompleteRef.current
+      ) {
+        return;
+      }
+
+      autoSummaryTriggeredRef.current = true;
+      try {
+        const requestBody = {
+          messages: messagesForSummary,
+          workspaceId,
+          chatType: "onboarding",
+          forceSummary: true,
+        };
+        console.log("[onboarding debug] silent summary /api/chat request body:", requestBody);
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(requestBody),
+        });
+        const payload = await response.json();
+        console.log("[onboarding debug] silent summary AI reply:", payload.reply);
+        if (!response.ok || !payload.reply) {
+          const errMsg =
+            (typeof payload.error === "string" && payload.error.trim()) ||
+            `Silent summary failed (${response.status}).`;
+          console.error(errMsg);
+          autoSummaryTriggeredRef.current = false;
+          return;
+        }
+        await saveBusinessMemoryFromReply(payload.reply, { appendConfirmation: true });
+      } catch (error) {
+        console.error("Silent summary parse/save error:", error);
+        autoSummaryTriggeredRef.current = false;
+      }
+    },
+    [onboardingChatId, saveBusinessMemoryFromReply, workspaceId]
+  );
 
   const submitOnboardingMessage = useCallback(async (content, options = {}) => {
     const { showControlMessage = true } = options;
@@ -357,17 +442,12 @@ export default function DashboardPage() {
         return;
       }
 
-      const onboardingCompleted = payload.reply.includes("ONBOARDING_COMPLETE");
-      const assistantDisplayContent = onboardingCompleted
-        ? ONBOARDING_COMPLETE_DISPLAY_MESSAGE
-        : payload.reply;
-
       const insertedAssistantMessage = await supabase
         .from("messages")
         .insert({
           chat_id: onboardingChatId,
           role: "assistant",
-          content: assistantDisplayContent,
+          content: payload.reply,
         })
         .select("id, role, content, created_at")
         .single();
@@ -376,46 +456,28 @@ export default function DashboardPage() {
 
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
-      // ⚠️ DO NOT MODIFY Business memory save logic. Took significant effort to get working. Touch only if explicitly instructed otherwise ask.
-      const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
-      console.log("[onboarding debug] ONBOARDING_COMPLETE check:", {
-        detected: oc !== -1,
-        index: oc,
-      });
-      if (oc !== -1) {
-        try {
-          const raw = payload.reply.slice(oc + "ONBOARDING_COMPLETE".length);
-          const cleaned = raw
-            .trim()
-            .replace(/^```(?:json)?\s*/i, "")
-            .replace(/\s*```\s*$/, "")
-            .trim();
-          const start = cleaned.indexOf("{");
-          const end = cleaned.lastIndexOf("}");
-          if (start !== -1 && end !== -1) {
-            const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
-            console.log("[onboarding debug] save-business-memory request:", {
-              workspaceId,
-              parsedJson,
-            });
-            const res = await fetch("/api/save-business-memory", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ workspaceId, content: parsedJson }),
-            });
-            const resJson = await res.json().catch(() => ({}));
-            console.log("API response:", res.status, resJson);
-            if (!res.ok) {
-              console.error(
-                "Save failed:",
-                resJson?.error ?? res.status,
-                resJson
-              );
-            }
-          }
-        } catch (e) {
-          console.error("Parse error:", e);
-        }
+      const userMessageCountAfterSend = nextMessages.filter(
+        (m) =>
+          m.role === "user" &&
+          typeof m.content === "string" &&
+          m.content.trim() &&
+          m.content !== "SUMMARISE_NOW"
+      ).length;
+      if (
+        shouldPersistUserMessage &&
+        userMessageCountAfterSend >= AUTO_SUMMARY_EXCHANGES &&
+        !businessProfileSaveCompleteRef.current
+      ) {
+        void runSilentBackgroundSummary([
+          ...nextMessages.map((message) => ({
+            role: message.role === "assistant" ? "assistant" : "user",
+            content: message.content,
+          })),
+          {
+            role: "assistant",
+            content: payload.reply,
+          },
+        ]);
       }
     } catch (error) {
       setOnboardingError(error.message ?? "Something went wrong.");
@@ -423,7 +485,7 @@ export default function DashboardPage() {
       setOnboardingBusy(false);
       setOnboardingInput("");
     }
-  }, [onboardingBusy, onboardingChatId, onboardingMessages, workspaceId]);
+  }, [onboardingBusy, onboardingChatId, onboardingMessages, runSilentBackgroundSummary, workspaceId]);
 
   async function handleSummariseNowClick() {
     if (!onboardingChatId || onboardingBusy || summariseConfirmLoading) return;
@@ -431,21 +493,14 @@ export default function DashboardPage() {
     setSummariseConfirmLoading(true);
     setOnboardingError(null);
     try {
-      const inserted = await supabase
-        .from("messages")
-        .insert({
-          chat_id: onboardingChatId,
-          role: "assistant",
-          content: SUMMARY_CONFIRMATION_MESSAGE,
-        })
-        .select("id, role, content, created_at")
-        .single();
-
-      if (inserted.error) throw inserted.error;
-      setOnboardingMessages((prev) => [...prev, inserted.data]);
-      await submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false });
+      await runSilentBackgroundSummary(
+        onboardingMessages.map((message) => ({
+          role: message.role === "assistant" ? "assistant" : "user",
+          content: message.content,
+        }))
+      );
     } catch (error) {
-      setOnboardingError(error.message ?? "Failed to add confirmation message.");
+      setOnboardingError(error.message ?? "Failed to generate and save summary.");
     } finally {
       setSummariseConfirmLoading(false);
     }
@@ -630,21 +685,23 @@ export default function DashboardPage() {
                     {onboardingError}
                   </p>
                 )}
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-[11px] text-zinc-500">
-                    {remainingExchanges} exchanges before auto-summary
-                  </p>
-                  {onboardingUserMessageCount >= 2 && (
-                    <button
-                      type="button"
-                      onClick={() => void handleSummariseNowClick()}
-                      disabled={onboardingBusy || summariseConfirmLoading}
-                      className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      Summarise Now
-                    </button>
-                  )}
-                </div>
+                {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && (
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] text-zinc-500">
+                      {remainingExchanges} exchanges before auto-summary
+                    </p>
+                    {onboardingUserMessageCount >= 2 && (
+                      <button
+                        type="button"
+                        onClick={() => void handleSummariseNowClick()}
+                        disabled={onboardingBusy || summariseConfirmLoading}
+                        className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Summarise Now
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
                   <input
