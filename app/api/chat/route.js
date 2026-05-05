@@ -107,7 +107,7 @@ export async function POST(request) {
 
     const model =
       chatType === "onboarding"
-        ? "claude-sonnet-4-5-20251022"
+        ? "claude-sonnet-4-5-20251015"
         : "claude-haiku-4-5-20251001";
     console.log(
       `Anthropic messages before fetch: length=${effectiveMessages.length} lastRole=${lastMsg.role}`
