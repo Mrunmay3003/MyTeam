@@ -382,21 +382,18 @@ export default function DashboardPage() {
               workspaceId,
               parsedJson,
             });
-            const saveRes = await fetch("/api/save-business-memory", {
+            const res = await fetch("/api/save-business-memory", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ workspaceId, content: parsedJson }),
             });
-            const savePayload = await saveRes.json().catch(() => ({}));
-            console.log("[onboarding debug] save-business-memory response:", {
-              status: saveRes.status,
-              json: savePayload,
-            });
-            if (!saveRes.ok) {
+            const resJson = await res.json().catch(() => ({}));
+            console.log("API response:", res.status, resJson);
+            if (!res.ok) {
               console.error(
                 "Save failed:",
-                savePayload?.error ?? saveRes.status,
-                savePayload
+                resJson?.error ?? res.status,
+                resJson
               );
             }
           }

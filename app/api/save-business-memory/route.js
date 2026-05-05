@@ -4,6 +4,10 @@ import { cookies } from "next/headers";
 
 export async function POST(request) {
   try {
+    const body = await request.json();
+    const { workspaceId, content } = body ?? {};
+    console.log("API received:", { workspaceId, content });
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -15,9 +19,6 @@ export async function POST(request) {
       );
     }
 
-    const body = await request.json();
-    const { workspaceId, content } = body ?? {};
-
     if (
       typeof workspaceId !== "string" ||
       !workspaceId.trim() ||
@@ -25,8 +26,24 @@ export async function POST(request) {
       typeof content !== "object" ||
       Array.isArray(content)
     ) {
+      const reason = {
+        message: "Invalid body: expected { workspaceId: string, content: object }.",
+        workspaceId,
+        content,
+        checks: {
+          workspaceIdIsString: typeof workspaceId === "string",
+          workspaceIdNonEmpty:
+            typeof workspaceId === "string" && !!workspaceId.trim(),
+          contentPresent: content != null,
+          contentIsPlainObject:
+            content != null &&
+            typeof content === "object" &&
+            !Array.isArray(content),
+        },
+      };
+      console.log("Returning 400 because:", reason);
       return Response.json(
-        { error: "Invalid body: expected { workspaceId: string, content: object }." },
+        { error: reason.message },
         { status: 400 }
       );
     }
