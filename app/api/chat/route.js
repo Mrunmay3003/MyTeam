@@ -1,6 +1,6 @@
 const ONBOARDING_SYSTEM_PROMPT =
-  "You are the Business Chat for MyTeam — a direct, warm business partner and consultant. In the first 4 user exchanges, ask short question (only one question; or those related to similar points only) at a time to learn: company name, industry, team size and roles, ongoing projects, flagship product, 1-2 year goals, and coordination challenges. After exactly 4 exchanges, stop asking questions entirely — at your 5th reply say you have a solid or basic understanding (depending on how much info the user provided) of the business, and shift permanently into advisor mode. In advisor mode: give direct suggestions, short reactions, and concrete advice. Only ask a question if absolutely necessary and related to the topic. Adapt to the user's communication preferences. Keep responses short for simple comments. Go longer only when asked for strategy or detailed plans. Never over-explain. Boost the user's productivity — tell them what to do, not only what to think about. Draw on your existing knowledge to help with research and decision making — be upfront when something needs verification from current sources.";
-
+  "You are the Business Chat for MyTeam — a direct, warm business partner and consultant. In the first 4 user exchanges, ask short question (only one question; or those related to similar points only) at a time to learn: company name, industry, team size and roles, ongoing projects, flagship product, 1-2 year goals, and coordination challenges. After exactly 4 exchanges, stop asking questions entirely — say you have a solid or basic understanding (depending on how much info the user provided) of the business, and shift permanently into advisor mode. In advisor mode: give direct suggestions, short reactions, and concrete advice. Only ask a question if absolutely necessary and related to the topic. Adapt to the user's communication preferences. Keep responses short for simple comments. Go longer only when asked for strategy or detailed plans. Never over-explain. Boost the user's productivity — tell them what to do, not only what to think about. Draw on your existing knowledge to help with research and decision making — be upfront when something needs verification from current sources.";
+ 
 function normalizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
   return messages
@@ -10,7 +10,7 @@ function normalizeMessages(messages) {
       content: m.content,
     }));
 }
-
+ 
 /** Merge consecutive same-role turns (newline); drop leading turns until the first is `user`. */
 function dedupeAlternateRoles(messages) {
   if (!Array.isArray(messages) || messages.length === 0) return [];
@@ -28,18 +28,36 @@ function dedupeAlternateRoles(messages) {
   }
   return merged;
 }
-
+ 
 export async function POST(request) {
   try {
     const body = await request.json();
     console.log("[/api/chat] incoming request body:", body);
     const { messages, workspaceId, chatType, forceSummary: forceSummaryFlag } = body ?? {};
-    void workspaceId;
+ 
+    // Fetch business memory from Supabase to inject into system prompt
+    let businessMemoryContext = "";
+    if (workspaceId) {
+      const { createClient } = await import("@supabase/supabase-js");
+      const supabaseAdmin = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      );
+      const { data } = await supabaseAdmin
+        .from("business_memory")
+        .select("content")
+        .eq("workspace_id", workspaceId)
+        .single();
+      if (data?.content) {
+        businessMemoryContext = `\n\nBusiness Context (already known):\n${JSON.stringify(data.content, null, 2)}`;
+      }
+    }
+ 
     const normalizedMessages = normalizeMessages(messages);
     const forceSummary =
       forceSummaryFlag === true ||
       normalizedMessages[normalizedMessages.length - 1]?.content === "SUMMARISE_NOW";
-
+ 
     let effectiveMessages = normalizedMessages;
     if (forceSummary && effectiveMessages.length > 0) {
       const replacementPrompt =
@@ -51,16 +69,19 @@ export async function POST(request) {
       };
       effectiveMessages = replaced;
     }
-
+ 
     effectiveMessages = dedupeAlternateRoles(effectiveMessages);
-
+ 
+    // Slice to last 6 messages (3 exchanges) to reduce token usage
+    effectiveMessages = effectiveMessages.slice(-6);
+ 
     if (effectiveMessages.length === 0) {
       return Response.json(
         { error: "No messages to send to the model (empty conversation)." },
         { status: 400 }
       );
     }
-
+ 
     const emptyContentIndex = effectiveMessages.findIndex(
       (m) => typeof m.content !== "string" || !m.content.trim()
     );
@@ -72,21 +93,21 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+ 
     const system =
       chatType === "onboarding"
         ? forceSummary
-          ? `${ONBOARDING_SYSTEM_PROMPT}\n\nThe user asked for a summary now. Respond immediately with the required ONBOARDING_COMPLETE, JSON object, and SUGGESTIONS line format.`
-          : ONBOARDING_SYSTEM_PROMPT
-        : "You are a helpful assistant.";
-
+          ? `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nThe user asked for a summary now. Respond immediately with the required ONBOARDING_COMPLETE, JSON object, and SUGGESTIONS line format.`
+          : `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}`
+        : `You are a helpful assistant.${businessMemoryContext}`;
+ 
     while (
       effectiveMessages.length > 0 &&
       effectiveMessages[effectiveMessages.length - 1].role === "assistant"
     ) {
       effectiveMessages.pop();
     }
-
+ 
     if (effectiveMessages.length === 0) {
       return Response.json(
         {
@@ -96,7 +117,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+ 
     const lastMsg = effectiveMessages[effectiveMessages.length - 1];
     if (lastMsg.role !== "user") {
       return Response.json(
@@ -104,7 +125,7 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
+ 
     const model =
       chatType === "onboarding"
         ? "claude-sonnet-4-6"
@@ -124,7 +145,7 @@ export async function POST(request) {
         2
       )
     );
-
+ 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -139,7 +160,7 @@ export async function POST(request) {
         messages: effectiveMessages,
       }),
     });
-
+ 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Anthropic error:", response.status, errorText);
@@ -148,7 +169,7 @@ export async function POST(request) {
         { status: 500 }
       );
     }
-
+ 
     const data = await response.json();
     const content = data?.content;
     if (content == null || !Array.isArray(content) || content.length === 0) {
@@ -160,11 +181,11 @@ export async function POST(request) {
         { status: 502 }
       );
     }
-
+ 
     const reply =
       data.content.find((item) => item?.type === "text")?.text ??
       "I could not generate a response.";
-
+ 
     return Response.json({ reply });
   } catch (error) {
     console.error("Chat route error:", error);
