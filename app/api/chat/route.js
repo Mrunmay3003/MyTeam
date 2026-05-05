@@ -33,15 +33,24 @@ export async function POST(request) {
   try {
     const body = await request.json();
     console.log("[/api/chat] incoming request body:", body);
-    const { messages, workspaceId, chatType } = body ?? {};
+    const { messages, workspaceId, chatType, forceSummary: forceSummaryFlag } = body ?? {};
     void workspaceId;
     const normalizedMessages = normalizeMessages(messages);
     const forceSummary =
+      forceSummaryFlag === true ||
       normalizedMessages[normalizedMessages.length - 1]?.content === "SUMMARISE_NOW";
 
-    let effectiveMessages = forceSummary
-      ? normalizedMessages.slice(0, -1)
-      : normalizedMessages;
+    let effectiveMessages = normalizedMessages;
+    if (forceSummary && effectiveMessages.length > 0) {
+      const replacementPrompt =
+        "I've shared enough about my business. Please summarise everything you've learned and provide the ONBOARDING_COMPLETE output now.";
+      const replaced = [...effectiveMessages];
+      replaced[replaced.length - 1] = {
+        role: "user",
+        content: replacementPrompt,
+      };
+      effectiveMessages = replaced;
+    }
 
     effectiveMessages = dedupeAlternateRoles(effectiveMessages);
 
