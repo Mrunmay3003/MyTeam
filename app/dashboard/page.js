@@ -427,6 +427,7 @@ export default function DashboardPage() {
 
       if (inserted.error) throw inserted.error;
       setOnboardingMessages((prev) => [...prev, inserted.data]);
+      await submitOnboardingMessage("SUMMARISE_NOW", { showControlMessage: false });
     } catch (error) {
       setOnboardingError(error.message ?? "Failed to add confirmation message.");
     } finally {
