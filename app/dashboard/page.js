@@ -365,6 +365,7 @@ export default function DashboardPage() {
 
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
+      // ⚠️ DO NOT MODIFY — Business memory save logic. Took significant effort to get working. Touch only if explicitly instructed otherwise ask.
       const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
       console.log("[onboarding debug] ONBOARDING_COMPLETE check:", {
         detected: oc !== -1,

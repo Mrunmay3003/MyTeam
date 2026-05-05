@@ -1,3 +1,4 @@
+// ⚠️ DO NOT MODIFY — Business memory save logic. Took significant effort to get working. Touch only if explicitly instructed otherwise ask.
 import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
