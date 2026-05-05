@@ -325,6 +325,7 @@ export default function DashboardPage() {
       });
 
       const payload = await response.json();
+      console.log("[onboarding debug] full AI reply text:", payload.reply);
       if (!response.ok || !payload.reply) {
         const errMsg =
           (typeof payload.error === "string" && payload.error.trim()) ||
@@ -361,6 +362,10 @@ export default function DashboardPage() {
       setOnboardingMessages((prev) => [...prev, insertedAssistantMessage.data]);
 
       const oc = payload.reply.indexOf("ONBOARDING_COMPLETE");
+      console.log("[onboarding debug] ONBOARDING_COMPLETE check:", {
+        detected: oc !== -1,
+        index: oc,
+      });
       if (oc !== -1) {
         try {
           const raw = payload.reply.slice(oc + "ONBOARDING_COMPLETE".length);
@@ -373,12 +378,20 @@ export default function DashboardPage() {
           const end = cleaned.lastIndexOf("}");
           if (start !== -1 && end !== -1) {
             const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
+            console.log("[onboarding debug] save-business-memory request:", {
+              workspaceId,
+              parsedJson,
+            });
             const saveRes = await fetch("/api/save-business-memory", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ workspaceId, content: parsedJson }),
             });
             const savePayload = await saveRes.json().catch(() => ({}));
+            console.log("[onboarding debug] save-business-memory response:", {
+              status: saveRes.status,
+              json: savePayload,
+            });
             if (!saveRes.ok) {
               console.error(
                 "Save failed:",
