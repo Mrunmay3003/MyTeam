@@ -373,15 +373,19 @@ export default function DashboardPage() {
           const end = cleaned.lastIndexOf("}");
           if (start !== -1 && end !== -1) {
             const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
-            const { error } = await supabase.from("business_memory").upsert(
-              {
-                workspace_id: workspaceId,
-                content: parsedJson,
-                updated_at: new Date().toISOString(),
-              },
-              { onConflict: "workspace_id" }
-            );
-            if (error) console.error("Save failed:", error);
+            const saveRes = await fetch("/api/save-business-memory", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ workspaceId, content: parsedJson }),
+            });
+            const savePayload = await saveRes.json().catch(() => ({}));
+            if (!saveRes.ok) {
+              console.error(
+                "Save failed:",
+                savePayload?.error ?? saveRes.status,
+                savePayload
+              );
+            }
           }
         } catch (e) {
           console.error("Parse error:", e);
