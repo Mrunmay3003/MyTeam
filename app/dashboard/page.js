@@ -685,7 +685,8 @@ export default function DashboardPage() {
                     {onboardingError}
                   </p>
                 )}
-                {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && (
+                {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES &&
+                  !businessProfileSaveCompleteRef.current && (
                   <div className="mb-2 flex items-center justify-between">
                     <p className="text-[11px] text-zinc-500">
                       {remainingExchanges} exchanges before auto-summary
