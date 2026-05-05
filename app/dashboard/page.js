@@ -314,14 +314,18 @@ export default function DashboardPage() {
       const controlMessages =
         trimmed === "SUMMARISE_NOW" ? [...apiMessages, { role: "user", content: "SUMMARISE_NOW" }] : apiMessages;
 
+      const requestBody = {
+        messages: controlMessages,
+        workspaceId,
+        chatType: "onboarding",
+        forceSummary: trimmed === "SUMMARISE_NOW",
+      };
+      console.log("[onboarding debug] /api/chat request body:", requestBody);
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          messages: controlMessages,
-          workspaceId,
-          chatType: "onboarding",
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const payload = await response.json();

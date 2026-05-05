@@ -32,6 +32,7 @@ function dedupeAlternateRoles(messages) {
 export async function POST(request) {
   try {
     const body = await request.json();
+    console.log("[/api/chat] incoming request body:", body);
     const { messages, workspaceId, chatType } = body ?? {};
     void workspaceId;
     const normalizedMessages = normalizeMessages(messages);
