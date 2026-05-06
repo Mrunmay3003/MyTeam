@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const MGR_W = 440;
-const MGR_MIN_W = 440;
-const MGR_MIN_H = 340;
+const MGR_W = 616;
+const MGR_MIN_W = 616;
+const MGR_MIN_H = 544;
 const MGR_HEADER_H = 42;
 const MGR_SEND_H = 54;
 const TM_NODE_W = 160;
