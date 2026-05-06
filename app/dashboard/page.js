@@ -560,6 +560,7 @@ export default function DashboardPage() {
       if (!workspace) throw new Error("Unable to load workspace.");
       if (cancelled) return;
       setWorkspaceId(workspace.id);
+      await loadCanvasNodes(workspace.id);
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
@@ -593,6 +594,31 @@ export default function DashboardPage() {
     router.refresh();
   }
 
+  async function loadCanvasNodes(wsId) {
+    const { data, error } = await supabase
+      .from("chats")
+      .select("id, type, name, pos_x, pos_y, chat_open, assigned_email")
+      .eq("workspace_id", wsId)
+      .in("type", ["manager", "teammate"]);
+    if (error) { console.error("loadCanvasNodes error:", error); return; }
+    if (!data || data.length === 0) return;
+    const mgr = data.find((c) => c.type === "manager");
+    if (mgr) {
+      setManagerNode({
+        id: mgr.id,
+        name: mgr.name,
+        chatOpen: mgr.chat_open ?? false,
+        pos: { x: mgr.pos_x ?? -MGR_W / 2, y: mgr.pos_y ?? -MGR_HEADER_H / 2 },
+      });
+    }
+    const tms = data.filter((c) => c.type === "teammate").map((c) => ({
+      id: c.id,
+      name: c.name,
+      pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 },
+      assignedEmail: c.assigned_email ?? null,
+    }));
+    if (tms.length > 0) setTeammates(tms);
+  }
   async function ensureWorkspace(currentUserId) {
     const d = await supabase.from("workspaces").select("id").eq("user_id", currentUserId).limit(1).maybeSingle();
     if (d.data) return d.data;
@@ -695,6 +721,22 @@ export default function DashboardPage() {
   async function handleOnboardingSubmit(e) { e.preventDefault(); await submitOnboardingMessage(onboardingInput); }
 
   // ── Canvas node actions ──────────────────────────────────────────────────────
+  async function saveCanvas(action, payload) {
+    if (!workspaceId || !userId) return null;
+    try {
+      const res = await fetch("/api/save-canvas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, workspaceId, userId, payload }),
+      });
+      const json = await res.json();
+      if (!res.ok) { console.error("[saveCanvas] error:", json?.error); return null; }
+      return json;
+    } catch (err) {
+      console.error("[saveCanvas] fetch error:", err);
+      return null;
+    }
+  }
   function getNextTeammatePos() {
     const cols = 4;
     const colW = TM_NODE_W + 24;
@@ -707,9 +749,12 @@ export default function DashboardPage() {
     return { x: baseX, y: baseY };
   }
 
-  function handleCreateTeammate(name) {
+  async function handleCreateTeammate(name) {
     const pos = getNextTeammatePos();
-    setTeammates((prev) => [...prev, { id: Date.now(), name, pos, assignedEmail: null }]);
+    const result = await saveCanvas("create_teammate", { name, pos });
+    if (!result?.data) return;
+    const { id } = result.data;
+    setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: null }]);
   }
 
   function handleCreateManager(name) {
@@ -717,23 +762,43 @@ export default function DashboardPage() {
   }
 
   function toggleManagerChat() {
-    setManagerNode((prev) => prev ? { ...prev, chatOpen: !prev.chatOpen } : prev);
+    setManagerNode((prev) => {
+      if (!prev) return prev;
+      const chatOpen = !prev.chatOpen;
+      saveCanvas("toggle_chat_open", { chatId: prev.id, chatOpen });
+      return { ...prev, chatOpen };
+    });
   }
 
+  const mgrPosSaveTimer = useRef(null);
   function setManagerPos(pos) {
-    setManagerNode((prev) => prev ? { ...prev, pos } : prev);
+    setManagerNode((prev) => {
+      if (!prev) return prev;
+      clearTimeout(mgrPosSaveTimer.current);
+      mgrPosSaveTimer.current = setTimeout(() => {
+        saveCanvas("update_pos", { chatId: prev.id, pos });
+      }, 600);
+      return { ...prev, pos };
+    });
   }
 
+  const tmPosSaveTimers = useRef({});
   function setTeammatePos(id, pos) {
     setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, pos } : t));
+    clearTimeout(tmPosSaveTimers.current[id]);
+    tmPosSaveTimers.current[id] = setTimeout(() => {
+      saveCanvas("update_pos", { chatId: id, pos });
+    }, 600);
   }
 
   function assignTeammate(id, email) {
     setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, assignedEmail: email } : t));
+    saveCanvas("assign_email", { chatId: id, email });
   }
 
   function unassignTeammate(id) {
     setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, assignedEmail: null } : t));
+    saveCanvas("unassign_email", { chatId: id });
   }
 
   function openTeammateChat(id) { setActiveChatId(id); setCentreView("chat"); }
@@ -782,7 +847,7 @@ export default function DashboardPage() {
         <ManagerContextMenu
           x={mgrCtxMenu.x} y={mgrCtxMenu.y}
           onNewTeammate={() => setModalType("teammate")}
-          onDelete={() => setManagerNode(null)}
+          onDelete={() => { if (managerNode) saveCanvas("delete_chat", { chatId: managerNode.id }); setManagerNode(null); }}
           onClose={() => setMgrCtxMenu(null)}
         />
       )}
