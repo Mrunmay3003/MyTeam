@@ -4,22 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+const MGR_W = 440;
+const MGR_HEADER_H = 42;
+const MGR_CHAT_H = 340;
+const MGR_SEND_H = 54;
+const MGR_TOTAL_OPEN = MGR_HEADER_H + MGR_CHAT_H + MGR_SEND_H;
+const TM_NODE_W = 160;
+const TM_NODE_H = 42;
+
 const OPENING_MESSAGE =
   "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
 const AUTO_SUMMARY_EXCHANGES = 5;
 const BUSINESS_PROFILE_SAVED_MESSAGE =
   "✅ Business Profile saved! We will update it from time to time as we discuss here in this Business Context panel.";
 
-// Default manager node size
-const MGR_W = 480;
-const MGR_CHAT_H = 440;
-
 function getInitials(name) {
   return name.slice(0, 2).toUpperCase();
 }
 
-// ── Icons ────────────────────────────────────────────────────────────────────
-
+// ── Icons ─────────────────────────────────────────────────────────────────────
 function ChevronLeftIcon({ className }) {
   return (
     <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -73,10 +77,20 @@ function XIcon({ className }) {
     </svg>
   );
 }
+function FocusIcon({ className }) {
+  return (
+    <svg className={className} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+    </svg>
+  );
+}
 
-// ── New Chat Modal ────────────────────────────────────────────────────────────
-
-function NewChatModal({ title, onClose, onCreate, existingNames = [] }) {
+// ── New Chat Modal ─────────────────────────────────────────────────────────────
+function NewChatModal({ title, placeholder = "Member or role name…", onClose, onCreate, existingNames = [] }) {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
@@ -88,29 +102,19 @@ function NewChatModal({ title, onClose, onCreate, existingNames = [] }) {
     const trimmed = name.trim();
     if (!trimmed) return;
     if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
-      setError(`"${trimmed}" already exists. Please choose a different name.`);
+      setError(`"${trimmed}" already exists.`);
       return;
     }
     onCreate(trimmed);
     onClose();
   }
 
-  function handleBackdrop(e) {
-    if (e.target === e.currentTarget) onClose();
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(3px)" }}
-      onMouseDown={handleBackdrop}
-    >
-      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/60">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300" aria-label="Close">
-            <XIcon />
-          </button>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -121,16 +125,12 @@ function NewChatModal({ title, onClose, onCreate, existingNames = [] }) {
               type="text"
               value={name}
               onChange={(e) => { setName(e.target.value); setError(""); }}
-              placeholder="Member or role name…"
+              placeholder={placeholder}
               className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25"
             />
             {error && <p className="text-xs text-red-400">{error}</p>}
           </div>
-          <button
-            type="submit"
-            disabled={!name.trim()}
-            className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-          >
+          <button type="submit" disabled={!name.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
             Create
           </button>
         </form>
@@ -139,73 +139,162 @@ function NewChatModal({ title, onClose, onCreate, existingNames = [] }) {
   );
 }
 
-// ── Context Menu ──────────────────────────────────────────────────────────────
-
-function ContextMenu({ x, y, onNewChat, onDelete, onClose }) {
-  const ref = useRef(null);
+// ── Assign Modal ───────────────────────────────────────────────────────────────
+function AssignModal({ teammate, onClose, onAssign, onUnassign }) {
+  const [currentEmail, setCurrentEmail] = useState(teammate.assignedEmail || null);
+  const [inputEmail, setInputEmail] = useState("");
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    function handler(e) {
-      if (!ref.current?.contains(e.target)) onClose();
-    }
+    if (!currentEmail) inputRef.current?.focus();
+  }, [currentEmail]);
+
+  function handleUnassign() {
+    onUnassign();
+    setCurrentEmail(null);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  function handleAssign(e) {
+    e.preventDefault();
+    const trimmed = inputEmail.trim();
+    if (!trimmed || currentEmail) return;
+    onAssign(trimmed);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-100">Assign — {teammate.name}</h2>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
+        </div>
+
+        {currentEmail && (
+          <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5">
+            <span className="truncate text-sm text-zinc-300">{currentEmail}</span>
+            <button type="button" onClick={handleUnassign} className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-700 hover:text-zinc-300" aria-label="Unassign">
+              <XIcon className="h-3 w-3" />
+            </button>
+          </div>
+        )}
+
+        <form onSubmit={handleAssign} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-zinc-500">Email</label>
+            <input
+              ref={inputRef}
+              type="email"
+              value={inputEmail}
+              onChange={(e) => setInputEmail(e.target.value)}
+              placeholder="teammate@company.com"
+              disabled={!!currentEmail}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25 disabled:opacity-40 disabled:cursor-not-allowed"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={!!currentEmail || !inputEmail.trim()}
+            className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Assign
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Manager Context Menu ───────────────────────────────────────────────────────
+function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    function handler(e) { if (!ref.current?.contains(e.target)) onClose(); }
     document.addEventListener("mousedown", handler);
     document.addEventListener("contextmenu", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("contextmenu", handler);
-    };
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("contextmenu", handler); };
   }, [onClose]);
 
   return (
-    <div
-      ref={ref}
-      className="fixed z-50 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50"
-      style={{ left: x, top: y, minWidth: 180 }}
-    >
-      <button
-        type="button"
-        onClick={() => { onNewChat(); onClose(); }}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80"
-      >
-        <span className="flex h-5 w-5 items-center justify-center rounded border border-dashed border-zinc-500 text-zinc-400">
-          <PlusIcon className="h-3 w-3" />
-        </span>
+    <div ref={ref} className="fixed z-50 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50" style={{ left: x, top: y, minWidth: 180 }}>
+      <button type="button" onClick={() => { onNewTeammate(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+        <span className="flex h-5 w-5 items-center justify-center rounded border border-dashed border-zinc-500 text-zinc-400"><PlusIcon className="h-3 w-3" /></span>
         New Teammate Chat
       </button>
       <div className="my-1 mx-2 border-t border-zinc-700" />
-      <button
-        type="button"
-        onClick={() => { onDelete(); onClose(); }}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-700/80"
-      >
+      <button type="button" onClick={() => { onDelete(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-700/80">
         Delete Chat
       </button>
     </div>
   );
 }
 
-// ── useDrag hook ──────────────────────────────────────────────────────────────
-// Returns { pos, onHeaderMouseDown } — drag only starts from the header
+// ── Teammate Context Menu ──────────────────────────────────────────────────────
+function TeammateContextMenu({ x, y, onAssign, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    function handler(e) { if (!ref.current?.contains(e.target)) onClose(); }
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("contextmenu", handler);
+    return () => { document.removeEventListener("mousedown", handler); document.removeEventListener("contextmenu", handler); };
+  }, [onClose]);
 
-function useDrag(initialPos) {
-  const [pos, setPos] = useState(initialPos);
+  return (
+    <div ref={ref} className="fixed z-50 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50" style={{ left: x, top: y, minWidth: 160 }}>
+      <button type="button" onClick={() => { onAssign(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+        Assign
+      </button>
+    </div>
+  );
+}
+
+// ── Connection Lines ───────────────────────────────────────────────────────────
+function ConnectionLines({ managerNode, teammates }) {
+  if (!managerNode || teammates.length === 0) return null;
+
+  const mgrTotalH = managerNode.chatOpen ? MGR_TOTAL_OPEN : MGR_HEADER_H;
+  const mgrBottomX = managerNode.pos.x + MGR_W / 2;
+  const mgrBottomY = managerNode.pos.y + mgrTotalH;
+
+  return (
+    <svg
+      style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none", zIndex: 1 }}
+    >
+      {teammates.map((tm) => {
+        const tmTopX = tm.pos.x + TM_NODE_W / 2;
+        const tmTopY = tm.pos.y;
+        const dy = tmTopY - mgrBottomY;
+        const absDy = Math.abs(dy);
+        const cp1y = mgrBottomY + absDy * 0.45;
+        const cp2y = tmTopY - absDy * 0.25;
+        const d = `M ${mgrBottomX} ${mgrBottomY} C ${mgrBottomX} ${cp1y}, ${tmTopX} ${cp2y}, ${tmTopX} ${tmTopY}`;
+        return (
+          <path key={tm.id} d={d} fill="none" stroke="rgba(161,161,170,0.35)" strokeWidth="2.5" strokeLinecap="round" />
+        );
+      })}
+    </svg>
+  );
+}
+
+// ── Draggable Manager Node ─────────────────────────────────────────────────────
+function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onContextMenu }) {
   const dragging = useRef(false);
   const start = useRef({ mx: 0, my: 0, px: 0, py: 0 });
 
-  const onHeaderMouseDown = useCallback((e) => {
-    // Only primary button, ignore clicks on buttons inside header
+  function onHeaderMouseDown(e) {
     if (e.button !== 0) return;
     if (e.target.closest("button")) return;
     e.preventDefault();
     e.stopPropagation();
     dragging.current = true;
-    start.current = { mx: e.clientX, my: e.clientY, px: pos.x, py: pos.y };
+    start.current = { mx: e.clientX, my: e.clientY, px: node.pos.x, py: node.pos.y };
 
     function onMove(e) {
       if (!dragging.current) return;
-      setPos({
-        x: start.current.px + (e.clientX - start.current.mx),
-        y: start.current.py + (e.clientY - start.current.my),
+      onPosChange({
+        x: start.current.px + (e.clientX - start.current.mx) / canvasScale,
+        y: start.current.py + (e.clientY - start.current.my) / canvasScale,
       });
     }
     function onUp() {
@@ -215,62 +304,39 @@ function useDrag(initialPos) {
     }
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [pos]);
-
-  return { pos, setPos, onHeaderMouseDown };
-}
-
-// ── Manager Chat Node ─────────────────────────────────────────────────────────
-
-function ManagerChatNode({ node, onToggleChat, onHeaderMouseDown }) {
-  const headerH = 48;
+  }
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: node.pos.x,
-        top: node.pos.y,
-        width: MGR_W,
-        zIndex: 10,
-      }}
-    >
+    <div style={{ position: "absolute", left: node.pos.x, top: node.pos.y, width: MGR_W, zIndex: 10 }} onContextMenu={onContextMenu}>
       <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-2xl shadow-black/60">
-        {/* Drag header */}
+        {/* Header — drag + double-click to toggle */}
         <div
-          className="flex items-center justify-between gap-2 px-5 rounded-t-2xl cursor-grab active:cursor-grabbing select-none"
-          style={{ height: headerH, background: "rgba(39,39,42,0.95)" }}
+          className="flex items-center justify-between gap-2 px-4 rounded-t-2xl cursor-grab active:cursor-grabbing select-none"
+          style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
           onMouseDown={onHeaderMouseDown}
+          onDoubleClick={onToggleChat}
         >
-          <span className="truncate text-base font-bold text-zinc-100">{node.name}</span>
+          <span className="truncate text-sm font-bold text-zinc-100">{node.name}</span>
           <button
             type="button"
             onClick={onToggleChat}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
-            aria-label="Toggle chat"
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
           >
-            <ChevronDownIcon
-              className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`}
-            />
+            <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
           </button>
         </div>
 
-        {/* Inline chat panel */}
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div className="overflow-y-auto p-4 space-y-2" style={{ height: MGR_CHAT_H }}>
+            <div className="overflow-y-auto p-3 space-y-2" style={{ height: MGR_CHAT_H }}>
               <p className="text-xs text-zinc-600 text-center pt-10">
                 Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
               </p>
             </div>
-            <div className="border-t border-zinc-800 p-3">
+            <div className="border-t border-zinc-800 p-3" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
               <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={`Message ${node.name}…`}
-                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30"
-                />
-                <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 opacity-50">Send</button>
+                <input type="text" placeholder={`Message ${node.name}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600" />
+                <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-3 py-2 text-xs font-medium text-zinc-300 opacity-50">Send</button>
               </div>
             </div>
           </div>
@@ -280,101 +346,60 @@ function ManagerChatNode({ node, onToggleChat, onHeaderMouseDown }) {
   );
 }
 
-// ── Teammate Header Node ──────────────────────────────────────────────────────
+// ── Draggable Teammate Node ────────────────────────────────────────────────────
+function DraggableTeammateNode({ node, canvasScale, onPosChange, onDoubleClick, onContextMenu }) {
+  const dragging = useRef(false);
+  const start = useRef({ mx: 0, my: 0, px: 0, py: 0 });
 
-function TeammateNode({ node, onHeaderMouseDown, onDoubleClick }) {
+  function onMouseDown(e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    dragging.current = true;
+    start.current = { mx: e.clientX, my: e.clientY, px: node.pos.x, py: node.pos.y };
+
+    function onMove(e) {
+      if (!dragging.current) return;
+      onPosChange({
+        x: start.current.px + (e.clientX - start.current.mx) / canvasScale,
+        y: start.current.py + (e.clientY - start.current.my) / canvasScale,
+      });
+    }
+    function onUp() {
+      dragging.current = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }
+
   return (
-    <div
-      style={{
-        position: "absolute",
-        left: node.pos.x,
-        top: node.pos.y,
-        zIndex: 5,
-      }}
-    >
+    <div style={{ position: "absolute", left: node.pos.x, top: node.pos.y, zIndex: 5 }}>
       <div
-        className="flex items-center justify-center rounded-xl border border-zinc-600 bg-zinc-800 px-5 cursor-grab active:cursor-grabbing select-none shadow-lg shadow-black/40"
-        style={{ height: 44, minWidth: 140, maxWidth: 220 }}
-        onMouseDown={onHeaderMouseDown}
-        onDoubleClick={onDoubleClick}
+        className="flex items-center justify-center rounded-xl border border-zinc-600 bg-zinc-800/90 px-4 cursor-grab active:cursor-grabbing select-none shadow-lg shadow-black/40 hover:border-zinc-500 hover:bg-zinc-800 transition-colors"
+        style={{ height: TM_NODE_H, width: TM_NODE_W }}
+        onMouseDown={onMouseDown}
+        onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
+        onContextMenu={onContextMenu}
         title="Double-click to open chat"
       >
-        <span className="truncate text-sm font-semibold text-zinc-200">{node.name}</span>
+        <span className="truncate text-xs font-semibold text-zinc-200">{node.name}</span>
       </div>
     </div>
   );
 }
 
-// ── Connection Lines SVG overlay ──────────────────────────────────────────────
-// Renders curved lines in canvas-world space (no transform needed — we position
-// absolutely inside the same world div, so coordinates are in world-space px)
-
-function ConnectionLines({ managerNode, teammateNodes }) {
-  if (!managerNode) return null;
-
-  const mgrHeaderH = 48;
-  const mgrSendBarH = 57; // border + padding + input row
-
-  const mgrTotalH = managerNode.chatOpen
-    ? mgrHeaderH + MGR_CHAT_H + mgrSendBarH
-    : mgrHeaderH;
-
-  const mgrBottom = {
-    x: managerNode.pos.x + MGR_W / 2,
-    y: managerNode.pos.y + mgrTotalH,
-  };
-
-  return (
-    <>
-      {teammateNodes.map((tm) => {
-        const tmTop = {
-          x: tm.pos.x + TM_NODE_W / 2,
-          y: tm.pos.y,
-        };
-
-        const dy = tmTop.y - mgrBottom.y;
-        const absDy = Math.abs(dy);
-        const cp1y = mgrBottom.y + absDy * 0.45;
-        const cp2y = tmTop.y - absDy * 0.25;
-
-        const d = `M ${mgrBottom.x} ${mgrBottom.y} C ${mgrBottom.x} ${cp1y}, ${tmTop.x} ${cp2y}, ${tmTop.x} ${tmTop.y}`;
-
-        return (
-          <svg
-            key={tm.id}
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              width: "100%",
-              height: "100%",
-              overflow: "visible",
-              pointerEvents: "none",
-              zIndex: 1,
-            }}
-          >
-            <path
-              d={d}
-              fill="none"
-              stroke="rgba(161,161,170,0.30)"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        );
-      })}
-    </>
-  );
-}
-
-// ── Main Dashboard ────────────────────────────────────────────────────────────
-
+// ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
 
+  // Auth
   const [authReady, setAuthReady] = useState(false);
   const [userId, setUserId] = useState(null);
   const [workspaceId, setWorkspaceId] = useState(null);
+
+  // Business context chat
   const [onboardingChatId, setOnboardingChatId] = useState(null);
   const [onboardingMessages, setOnboardingMessages] = useState([]);
   const [onboardingInput, setOnboardingInput] = useState("");
@@ -382,33 +407,29 @@ export default function DashboardPage() {
   const [onboardingError, setOnboardingError] = useState(null);
   const [summariseConfirmLoading, setSummariseConfirmLoading] = useState(false);
 
+  // UI panels
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contextOpen, setContextOpen] = useState(true);
   const [contextWidth, setContextWidth] = useState(600);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Modal: null | 'teammate' | 'manager'
-  const [modalType, setModalType] = useState(null);
+  // Modals
+  const [modalType, setModalType] = useState(null); // null | 'teammate' | 'manager'
+  const [assignTargetId, setAssignTargetId] = useState(null); // teammate id for assign modal
 
   // Centre view
   const [centreView, setCentreView] = useState("canvas");
-  const [activeChat, setActiveChat] = useState(null);
+  const [activeChatId, setActiveChatId] = useState(null); // teammate id
 
-  // Teammate list (sidebar)
+  // Canvas nodes — unified teammate array: { id, name, pos, assignedEmail }
+  const [managerNode, setManagerNode] = useState(null);
   const [teammates, setTeammates] = useState([]);
 
-  // Manager node — only ONE ever. null = not yet created.
-  const [managerNode, setManagerNode] = useState(null);
-  // { id, name, chatOpen, pos: { x, y } }
+  // Context menus
+  const [mgrCtxMenu, setMgrCtxMenu] = useState(null); // { x, y }
+  const [tmCtxMenu, setTmCtxMenu] = useState(null);   // { x, y, id }
 
-  // Teammate canvas nodes
-  const [teammateNodes, setTeammateNodes] = useState([]);
-  // { id, name, pos: { x, y } }
-
-  // Context menu
-  const [ctxMenu, setCtxMenu] = useState(null); // { x, y }
-
-  // Canvas pan / zoom
+  // Canvas state
   const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
   const [canvasScale, setCanvasScale] = useState(1);
   const canvasContainerRef = useRef(null);
@@ -422,7 +443,16 @@ export default function DashboardPage() {
   const contextScrollRef = useRef(null);
   const isResizingRef = useRef(false);
 
-  // ── Canvas init ──
+  // Derived
+  const activeTeammate = useMemo(() => teammates.find((t) => t.id === activeChatId), [teammates, activeChatId]);
+  const assignTarget = useMemo(() => teammates.find((t) => t.id === assignTargetId), [teammates, assignTargetId]);
+  const allNames = useMemo(() => {
+    const names = teammates.map((t) => t.name);
+    if (managerNode) names.push(managerNode.name);
+    return names;
+  }, [teammates, managerNode]);
+
+  // ── Canvas init ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (centreView !== "canvas" || !canvasContainerRef.current || canvasInitializedRef.current) return;
     const rect = canvasContainerRef.current.getBoundingClientRect();
@@ -430,7 +460,7 @@ export default function DashboardPage() {
     canvasInitializedRef.current = true;
   }, [centreView]);
 
-  // ── Middle-mouse pan ──
+  // ── Middle-mouse pan ─────────────────────────────────────────────────────────
   function handleCanvasMouseDown(e) {
     if (e.button !== 1) return;
     e.preventDefault();
@@ -449,7 +479,7 @@ export default function DashboardPage() {
     document.addEventListener("mouseup", onMouseUp);
   }
 
-  // ── Scroll zoom ──
+  // ── Scroll zoom ──────────────────────────────────────────────────────────────
   function handleCanvasWheel(e) {
     e.preventDefault();
     const rect = canvasContainerRef.current?.getBoundingClientRect();
@@ -457,16 +487,31 @@ export default function DashboardPage() {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
     const factor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newScale = Math.min(3, Math.max(0.2, canvasScale * factor));
+    const newScale = Math.min(3, Math.max(0.15, canvasScale * factor));
     const ratio = newScale / canvasScale;
     setCanvasScale(newScale);
-    setCanvasOffset({
-      x: mouseX - (mouseX - canvasOffset.x) * ratio,
-      y: mouseY - (mouseY - canvasOffset.y) * ratio,
-    });
+    setCanvasOffset({ x: mouseX - (mouseX - canvasOffset.x) * ratio, y: mouseY - (mouseY - canvasOffset.y) * ratio });
   }
 
-  // ── Right panel resize ──
+  // ── Focus/reset view on manager node ────────────────────────────────────────
+  function resetViewToManager() {
+    const rect = canvasContainerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const newScale = 1;
+    if (managerNode) {
+      const mgCx = managerNode.pos.x + MGR_W / 2;
+      const mgCy = managerNode.pos.y + MGR_HEADER_H / 2;
+      setCanvasScale(newScale);
+      setCanvasOffset({ x: cx - mgCx * newScale, y: cy - mgCy * newScale });
+    } else {
+      setCanvasScale(newScale);
+      setCanvasOffset({ x: cx, y: cy });
+    }
+  }
+
+  // ── Right panel resize ───────────────────────────────────────────────────────
   function startContextResize(e) {
     e.preventDefault();
     isResizingRef.current = true;
@@ -487,7 +532,7 @@ export default function DashboardPage() {
     document.addEventListener("mouseup", onMouseUp);
   }
 
-  // ── Auth ──
+  // ── Auth + bootstrap ─────────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -501,9 +546,7 @@ export default function DashboardPage() {
   }, [router]);
 
   useEffect(() => {
-    function handlePointerDown(e) {
-      if (!menuRef.current?.contains(e.target)) setMenuOpen(false);
-    }
+    function handlePointerDown(e) { if (!menuRef.current?.contains(e.target)) setMenuOpen(false); }
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, []);
@@ -523,17 +566,12 @@ export default function DashboardPage() {
       setOnboardingChatId(chat.id);
       const { data: existingMessages, error: messagesError } = await supabase
         .from("messages").select("id, role, content, created_at")
-        .eq("chat_id", chat.id)
-        .order("created_at", { ascending: true })
-        .order("id", { ascending: true });
+        .eq("chat_id", chat.id).order("created_at", { ascending: true }).order("id", { ascending: true });
       if (messagesError) throw messagesError;
       if (cancelled) return;
       setOnboardingMessages(existingMessages ?? []);
     }
-    bootstrapOnboarding().catch((err) => {
-      if (cancelled) return;
-      setOnboardingError(err.message ?? "Failed to load onboarding context.");
-    });
+    bootstrapOnboarding().catch((err) => { if (cancelled) return; setOnboardingError(err.message ?? "Failed to load onboarding context."); });
     return () => { cancelled = true; };
   }, [authReady, userId]);
 
@@ -543,9 +581,7 @@ export default function DashboardPage() {
   }, [onboardingMessages, contextOpen]);
 
   const onboardingUserMessageCount = useMemo(
-    () => onboardingMessages.filter(
-      (m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW"
-    ).length,
+    () => onboardingMessages.filter((m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW").length,
     [onboardingMessages]
   );
   const remainingExchanges = Math.max(0, AUTO_SUMMARY_EXCHANGES - onboardingUserMessageCount);
@@ -579,20 +615,17 @@ export default function DashboardPage() {
     return created.data;
   }
 
+  // ── Business memory (unchanged logic) ───────────────────────────────────────
   const saveBusinessMemoryFromReply = useCallback(async (replyText, options = {}) => {
     const { appendConfirmation = false } = options;
     const oc = replyText.indexOf("ONBOARDING_COMPLETE");
     if (oc === -1) return false;
     const raw = replyText.slice(oc + "ONBOARDING_COMPLETE".length);
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```\s*$/, "").trim();
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
+    const start = cleaned.indexOf("{"); const end = cleaned.lastIndexOf("}");
     if (start === -1 || end === -1) return false;
     const parsedJson = JSON.parse(cleaned.slice(start, end + 1));
-    const res = await fetch("/api/save-business-memory", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId, content: parsedJson }),
-    });
+    const res = await fetch("/api/save-business-memory", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ workspaceId, content: parsedJson }) });
     const resJson = await res.json().catch(() => ({}));
     if (!res.ok) { console.error("Save failed:", resJson?.error ?? res.status); return false; }
     if (appendConfirmation && !businessProfileSaveCompleteRef.current) {
@@ -608,17 +641,11 @@ export default function DashboardPage() {
     if (!workspaceId || !onboardingChatId || autoSummaryTriggeredRef.current || businessProfileSaveCompleteRef.current) return;
     autoSummaryTriggeredRef.current = true;
     try {
-      const response = await fetch("/api/chat", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: messagesForSummary, workspaceId, chatType: "onboarding", forceSummary: true }),
-      });
+      const response = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: messagesForSummary, workspaceId, chatType: "onboarding", forceSummary: true }) });
       const payload = await response.json();
       if (!response.ok || !payload.reply) { autoSummaryTriggeredRef.current = false; return; }
       await saveBusinessMemoryFromReply(payload.reply, { appendConfirmation: true });
-    } catch (err) {
-      console.error("Silent summary error:", err);
-      autoSummaryTriggeredRef.current = false;
-    }
+    } catch (err) { console.error("Silent summary error:", err); autoSummaryTriggeredRef.current = false; }
   }, [onboardingChatId, saveBusinessMemoryFromReply, workspaceId]);
 
   const submitOnboardingMessage = useCallback(async (content) => {
@@ -638,127 +665,92 @@ export default function DashboardPage() {
       }
       const apiMessages = nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }));
       const controlMessages = trimmed === "SUMMARISE_NOW" ? [...apiMessages, { role: "user", content: "SUMMARISE_NOW" }] : apiMessages;
-      const response = await fetch("/api/chat", {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ messages: controlMessages, workspaceId, chatType: "onboarding", forceSummary: trimmed === "SUMMARISE_NOW" }),
-      });
+      const response = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ messages: controlMessages, workspaceId, chatType: "onboarding", forceSummary: trimmed === "SUMMARISE_NOW" }) });
       const payload = await response.json();
       if (!response.ok || !payload.reply) {
         const errMsg = (typeof payload.error === "string" && payload.error.trim()) || `Chat request failed (${response.status}).`;
         const errIns = await supabase.from("messages").insert({ chat_id: onboardingChatId, role: "assistant", content: errMsg }).select("id, role, content, created_at").single();
-        if (errIns.error) setOnboardingError(errMsg);
-        else setOnboardingMessages((prev) => [...prev, errIns.data]);
+        if (errIns.error) setOnboardingError(errMsg); else setOnboardingMessages((prev) => [...prev, errIns.data]);
         return;
       }
       const asstIns = await supabase.from("messages").insert({ chat_id: onboardingChatId, role: "assistant", content: payload.reply }).select("id, role, content, created_at").single();
       if (asstIns.error) throw asstIns.error;
       setOnboardingMessages((prev) => [...prev, asstIns.data]);
-      const countAfter = nextMessages.filter(
-        (m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW"
-      ).length;
+      const countAfter = nextMessages.filter((m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW").length;
       if (shouldPersist && countAfter >= AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current) {
-        void runSilentBackgroundSummary([
-          ...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })),
-          { role: "assistant", content: payload.reply },
-        ]);
+        void runSilentBackgroundSummary([...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }]);
       }
-    } catch (err) {
-      setOnboardingError(err.message ?? "Something went wrong.");
-    } finally {
-      setOnboardingBusy(false);
-      setOnboardingInput("");
-    }
+    } catch (err) { setOnboardingError(err.message ?? "Something went wrong."); }
+    finally { setOnboardingBusy(false); setOnboardingInput(""); }
   }, [onboardingBusy, onboardingChatId, onboardingMessages, runSilentBackgroundSummary, workspaceId]);
 
   async function handleSummariseNowClick() {
     if (!onboardingChatId || onboardingBusy || summariseConfirmLoading) return;
-    setSummariseConfirmLoading(true);
-    setOnboardingError(null);
-    try {
-      await runSilentBackgroundSummary(onboardingMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })));
-    } catch (err) {
-      setOnboardingError(err.message ?? "Failed to generate and save summary.");
-    } finally {
-      setSummariseConfirmLoading(false);
-    }
+    setSummariseConfirmLoading(true); setOnboardingError(null);
+    try { await runSilentBackgroundSummary(onboardingMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content }))); }
+    catch (err) { setOnboardingError(err.message ?? "Failed to generate and save summary."); }
+    finally { setSummariseConfirmLoading(false); }
   }
 
-  async function handleOnboardingSubmit(e) {
-    e.preventDefault();
-    await submitOnboardingMessage(onboardingInput);
-  }
+  async function handleOnboardingSubmit(e) { e.preventDefault(); await submitOnboardingMessage(onboardingInput); }
 
-  function openTeammateChat(name) {
-    setActiveChat(name);
-    setCentreView("chat");
-  }
-  function closeTeammateChat() {
-    setActiveChat(null);
-    setCentreView("canvas");
-  }
-  function goToCanvas() {
-    setActiveChat(null);
-    setCentreView("canvas");
-  }
-
-  // All existing names (for duplicate check)
-  const allNames = useMemo(() => {
-    const names = [...teammates];
-    if (managerNode) names.push(managerNode.name);
-    return names;
-  }, [teammates, managerNode]);
-
-  // Spawn position for new teammate node
-  function getNextTeammatePos(index) {
+  // ── Canvas node actions ──────────────────────────────────────────────────────
+  function getNextTeammatePos() {
     const cols = 4;
     const colW = TM_NODE_W + 24;
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    const baseX = managerNode
-      ? managerNode.pos.x + MGR_W / 2 - (Math.min(cols, teammates.length + 1) * colW) / 2 + col * colW
-      : 80 + col * colW;
-    const baseY = managerNode ? managerNode.pos.y + 48 + 120 + row * 80 : 220 + row * 80;
+    const idx = teammates.length;
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const mgrH = managerNode?.chatOpen ? MGR_TOTAL_OPEN : MGR_HEADER_H;
+    const baseX = managerNode ? managerNode.pos.x + MGR_W / 2 - (Math.min(cols, idx + 1) * colW) / 2 + col * colW : 80 + col * colW;
+    const baseY = managerNode ? managerNode.pos.y + mgrH + 80 + row * 64 : 200 + row * 64;
     return { x: baseX, y: baseY };
   }
 
-  // Create teammate — from left panel + or from manager right-click
   function handleCreateTeammate(name) {
-    const idx = teammates.length;
-    const pos = getNextTeammatePos(idx);
-    setTeammates((prev) => [...prev, name]);
-    setTeammateNodes((prev) => [...prev, { id: Date.now(), name, pos }]);
+    const pos = getNextTeammatePos();
+    setTeammates((prev) => [...prev, { id: Date.now(), name, pos, assignedEmail: null }]);
   }
 
-  // Create manager node
   function handleCreateManager(name) {
-    setManagerNode({ id: Date.now(), name, chatOpen: false, pos: { x: -MGR_W / 2, y: -60 } });
+    setManagerNode({ id: Date.now(), name, chatOpen: false, pos: { x: -MGR_W / 2, y: -MGR_HEADER_H / 2 } });
   }
 
-  // Toggle manager chat
   function toggleManagerChat() {
     setManagerNode((prev) => prev ? { ...prev, chatOpen: !prev.chatOpen } : prev);
   }
 
-  // Delete manager
-  function handleDeleteManager() {
-    setManagerNode(null);
-  }
-
-  // Update manager pos (from drag)
   function setManagerPos(pos) {
     setManagerNode((prev) => prev ? { ...prev, pos } : prev);
   }
 
-  // Update teammate pos
   function setTeammatePos(id, pos) {
-    setTeammateNodes((prev) => prev.map((n) => n.id === id ? { ...n, pos } : n));
+    setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, pos } : t));
+  }
+
+  function assignTeammate(id, email) {
+    setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, assignedEmail: email } : t));
+  }
+
+  function unassignTeammate(id) {
+    setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, assignedEmail: null } : t));
+  }
+
+  function openTeammateChat(id) { setActiveChatId(id); setCentreView("chat"); }
+  function closeTeammateChat() { setActiveChatId(null); setCentreView("canvas"); }
+  function goToCanvas() { setActiveChatId(null); setCentreView("canvas"); }
+
+  function openTmCtxMenu(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+    setTmCtxMenu({ x: e.clientX, y: e.clientY, id });
   }
 
   if (!authReady) return null;
 
   return (
     <>
-      {/* Global thin scrollbar */}
+      {/* Global thin scrollbars */}
       <style>{`
         * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
         *::-webkit-scrollbar { width: 3px; height: 3px; }
@@ -771,46 +763,42 @@ export default function DashboardPage() {
 
       {/* Modals */}
       {modalType === "teammate" && (
-        <NewChatModal
-          title="New Teammate Chat"
-          onClose={() => setModalType(null)}
-          onCreate={handleCreateTeammate}
-          existingNames={allNames}
-        />
+        <NewChatModal title="New Teammate Chat" onClose={() => setModalType(null)} onCreate={handleCreateTeammate} existingNames={allNames} />
       )}
       {modalType === "manager" && (
-        <NewChatModal
-          title="New Manager Chat"
-          onClose={() => setModalType(null)}
-          onCreate={handleCreateManager}
-          existingNames={allNames}
+        <NewChatModal title="New Manager Chat" onClose={() => setModalType(null)} onCreate={handleCreateManager} existingNames={allNames} />
+      )}
+      {assignTargetId && assignTarget && (
+        <AssignModal
+          teammate={assignTarget}
+          onClose={() => setAssignTargetId(null)}
+          onAssign={(email) => { assignTeammate(assignTargetId, email); setAssignTargetId(null); }}
+          onUnassign={() => unassignTeammate(assignTargetId)}
         />
       )}
 
-      {/* Context menu */}
-      {ctxMenu && (
-        <ContextMenu
-          x={ctxMenu.x}
-          y={ctxMenu.y}
-          onNewChat={() => setModalType("teammate")}
-          onDelete={handleDeleteManager}
-          onClose={() => setCtxMenu(null)}
+      {/* Context menus */}
+      {mgrCtxMenu && (
+        <ManagerContextMenu
+          x={mgrCtxMenu.x} y={mgrCtxMenu.y}
+          onNewTeammate={() => setModalType("teammate")}
+          onDelete={() => setManagerNode(null)}
+          onClose={() => setMgrCtxMenu(null)}
+        />
+      )}
+      {tmCtxMenu && (
+        <TeammateContextMenu
+          x={tmCtxMenu.x} y={tmCtxMenu.y}
+          onAssign={() => setAssignTargetId(tmCtxMenu.id)}
+          onClose={() => setTmCtxMenu(null)}
         />
       )}
 
       <div className="flex h-screen min-h-0 flex-col bg-zinc-900 font-sans text-zinc-100">
-
         {/* Header */}
         <header className="flex h-12 shrink-0 items-center justify-end border-b border-zinc-800 bg-zinc-900 px-3">
           <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200 ring-1 ring-zinc-600 transition-colors hover:bg-zinc-600"
-              aria-expanded={menuOpen}
-              aria-haspopup="menu"
-              aria-label="Account menu"
-            >
+            <button type="button" onClick={() => setMenuOpen((o) => !o)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200 ring-1 ring-zinc-600 transition-colors hover:bg-zinc-600" aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Account menu">
               Me
             </button>
             {menuOpen && (
@@ -825,10 +813,7 @@ export default function DashboardPage() {
         <div className="flex min-h-0 flex-1">
 
           {/* ── Left Sidebar ── */}
-          <aside
-            style={{ width: sidebarOpen ? "260px" : "52px" }}
-            className="relative flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out overflow-hidden"
-          >
+          <aside style={{ width: sidebarOpen ? "260px" : "52px" }} className="relative flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out overflow-hidden">
             <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
               {sidebarOpen ? (
                 <>
@@ -846,7 +831,7 @@ export default function DashboardPage() {
 
             <nav className="flex-1 overflow-y-auto p-2" aria-label="Navigation">
               <ul className="space-y-1">
-                {/* Canvas */}
+                {/* Canvas home */}
                 <li>
                   {sidebarOpen ? (
                     <button type="button" onClick={goToCanvas} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
@@ -860,7 +845,7 @@ export default function DashboardPage() {
                   )}
                 </li>
 
-                {/* Teammate Chats sub-label */}
+                {/* Teammate chats sub-label */}
                 {sidebarOpen ? (
                   <li aria-hidden>
                     <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Teammate Chats</p>
@@ -869,16 +854,27 @@ export default function DashboardPage() {
                   <li aria-hidden><div className="my-1 mx-1 border-t border-zinc-800" /></li>
                 )}
 
-                {/* Teammate list */}
-                {teammates.map((name) => (
-                  <li key={name}>
+                {/* Teammates */}
+                {teammates.map((tm) => (
+                  <li key={tm.id}>
                     {sidebarOpen ? (
-                      <button type="button" onClick={() => openTeammateChat(name)} className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${activeChat === name && centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}>
-                        {name}
+                      <button
+                        type="button"
+                        onClick={() => openTeammateChat(tm.id)}
+                        onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
+                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors truncate block ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}
+                      >
+                        {tm.name}
                       </button>
                     ) : (
-                      <button type="button" onClick={() => openTeammateChat(name)} title={name} className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-colors ${activeChat === name && centreView === "chat" ? "bg-zinc-600 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}>
-                        {getInitials(name)}
+                      <button
+                        type="button"
+                        onClick={() => openTeammateChat(tm.id)}
+                        onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
+                        title={tm.name}
+                        className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-colors ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-600 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}
+                      >
+                        {getInitials(tm.name)}
                       </button>
                     )}
                   </li>
@@ -904,8 +900,7 @@ export default function DashboardPage() {
             <div className="border-t border-zinc-800 p-2">
               {sidebarOpen ? (
                 <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
-                  <SettingsIcon className="shrink-0" />
-                  Settings
+                  <SettingsIcon className="shrink-0" />Settings
                 </button>
               ) : (
                 <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
@@ -938,45 +933,30 @@ export default function DashboardPage() {
                 />
 
                 {/* Canvas world */}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    width: "100%",
-                    height: "100%",
-                    transformOrigin: "0 0",
-                    transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`,
-                  }}
-                >
-                  {/* Connection lines */}
-                  <ConnectionLines managerNode={managerNode} teammateNodes={teammateNodes} />
+                <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", transformOrigin: "0 0", transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})` }}>
+                  <ConnectionLines managerNode={managerNode} teammates={teammates} />
 
-                  {/* Manager node */}
                   {managerNode && (
                     <DraggableManagerNode
                       node={managerNode}
+                      canvasScale={canvasScale}
                       onToggleChat={toggleManagerChat}
                       onPosChange={setManagerPos}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setCtxMenu({ x: e.clientX, y: e.clientY });
-                      }}
+                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMgrCtxMenu({ x: e.clientX, y: e.clientY }); }}
                     />
                   )}
 
-                  {/* Teammate nodes */}
-                  {teammateNodes.map((tm) => (
+                  {teammates.map((tm) => (
                     <DraggableTeammateNode
                       key={tm.id}
                       node={tm}
+                      canvasScale={canvasScale}
                       onPosChange={(pos) => setTeammatePos(tm.id, pos)}
-                      onDoubleClick={() => openTeammateChat(tm.name)}
+                      onDoubleClick={() => openTeammateChat(tm.id)}
+                      onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
                     />
                   ))}
 
-                  {/* Create manager button — only shown if no manager yet */}
                   {!managerNode && (
                     <div style={{ position: "absolute", left: -120, top: -44 }}>
                       <button
@@ -984,7 +964,6 @@ export default function DashboardPage() {
                         onClick={() => setModalType("manager")}
                         className="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-600 bg-zinc-900/80 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 active:scale-95"
                         style={{ width: 240, height: 88 }}
-                        aria-label="Create manager chat"
                       >
                         <span className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800">
                           <PlusIcon className="h-5 w-5" />
@@ -995,28 +974,33 @@ export default function DashboardPage() {
                   )}
                 </div>
 
-                <div className="absolute bottom-4 right-4 pointer-events-none text-[11px] text-zinc-600 select-none">
-                  Scroll to zoom · Middle-click drag to pan · Right-click manager to edit
+                {/* Bottom-right controls */}
+                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={resetViewToManager}
+                    title="Focus manager chat"
+                    className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800/90 text-zinc-400 shadow-md transition-colors hover:border-zinc-500 hover:bg-zinc-700 hover:text-zinc-200"
+                  >
+                    <FocusIcon />
+                  </button>
+                  <p className="text-[11px] text-zinc-600 select-none">Scroll to zoom · Middle-click drag to pan · Right-click to edit</p>
                 </div>
               </div>
 
             ) : (
-              /* TEAMMATE CHAT */
+              /* Teammate chat view */
               <div className="flex flex-1 flex-col min-h-0">
                 <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
-                  <h2 className="text-sm font-semibold text-zinc-200">{activeChat}</h2>
-                  <button type="button" onClick={closeTeammateChat} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors" aria-label="Close chat">
-                    <XIcon />
-                  </button>
+                  <h2 className="text-sm font-semibold text-zinc-200 truncate">{activeTeammate?.name ?? "Chat"}</h2>
+                  <button type="button" onClick={closeTeammateChat} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><XIcon /></button>
                 </div>
                 <div className="flex flex-1 flex-col items-center justify-center px-6">
-                  <p className="text-sm text-zinc-500">
-                    Chat log for <span className="text-zinc-300 font-medium">{activeChat}</span> will appear here.
-                  </p>
+                  <p className="text-sm text-zinc-500">Chat log for <span className="text-zinc-300 font-medium">{activeTeammate?.name}</span> will appear here.</p>
                 </div>
                 <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-3">
                   <div className="mx-auto flex max-w-3xl gap-2">
-                    <input type="text" placeholder={`Message ${activeChat}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30" />
+                    <input type="text" placeholder={`Message ${activeTeammate?.name ?? ""}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30" />
                     <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-50">Send</button>
                   </div>
                 </div>
@@ -1025,10 +1009,7 @@ export default function DashboardPage() {
           </main>
 
           {/* ── Right Panel — Business Context ── */}
-          <aside
-            style={{ width: contextOpen ? `${contextWidth}px` : "44px" }}
-            className="relative flex shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out"
-          >
+          <aside style={{ width: contextOpen ? `${contextWidth}px` : "44px" }} className="relative flex shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out">
             {contextOpen && (
               <div onMouseDown={startContextResize} className="absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 hover:bg-zinc-600/60 transition-colors" />
             )}
@@ -1036,14 +1017,10 @@ export default function DashboardPage() {
               {contextOpen ? (
                 <>
                   <h2 className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Context</h2>
-                  <button type="button" onClick={() => setContextOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300" aria-label="Collapse">
-                    <ChevronRightIcon />
-                  </button>
+                  <button type="button" onClick={() => setContextOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><ChevronRightIcon /></button>
                 </>
               ) : (
-                <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300" aria-label="Expand">
-                  <ChevronLeftIcon />
-                </button>
+                <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"><ChevronLeftIcon /></button>
               )}
             </div>
             {contextOpen && (
@@ -1074,17 +1051,8 @@ export default function DashboardPage() {
                     </div>
                   )}
                   <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={onboardingInput}
-                      onChange={(e) => setOnboardingInput(e.target.value)}
-                      placeholder="Reply..."
-                      disabled={onboardingBusy}
-                      className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50"
-                    />
-                    <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">
-                      Send
-                    </button>
+                    <input type="text" value={onboardingInput} onChange={(e) => setOnboardingInput(e.target.value)} placeholder="Reply..." disabled={onboardingBusy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50" />
+                    <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">Send</button>
                   </form>
                 </div>
               </div>
@@ -1093,137 +1061,5 @@ export default function DashboardPage() {
         </div>
       </div>
     </>
-  );
-}
-
-// ── Draggable wrappers (defined after main to avoid forward-ref complexity) ───
-
-function DraggableManagerNode({ node, onToggleChat, onPosChange, onContextMenu }) {
-  const posRef = useRef(node.pos);
-  const dragging = useRef(false);
-  const start = useRef({ mx: 0, my: 0, px: 0, py: 0 });
-
-  function onHeaderMouseDown(e) {
-    if (e.button !== 0) return;
-    if (e.target.closest("button")) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragging.current = true;
-    posRef.current = node.pos;
-    start.current = { mx: e.clientX, my: e.clientY, px: node.pos.x, py: node.pos.y };
-
-    function onMove(e) {
-      if (!dragging.current) return;
-      const newPos = {
-        x: start.current.px + (e.clientX - start.current.mx),
-        y: start.current.py + (e.clientY - start.current.my),
-      };
-      posRef.current = newPos;
-      onPosChange(newPos);
-    }
-    function onUp() {
-      dragging.current = false;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }
-
-  const headerH = 48;
-
-  return (
-    <div
-      style={{ position: "absolute", left: node.pos.x, top: node.pos.y, width: MGR_W, zIndex: 10 }}
-      onContextMenu={onContextMenu}
-    >
-      <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-2xl shadow-black/60">
-        {/* Drag header */}
-        <div
-          className="flex items-center justify-between gap-2 px-5 rounded-t-2xl cursor-grab active:cursor-grabbing select-none"
-          style={{ height: headerH, background: "rgba(39,39,42,0.97)" }}
-          onMouseDown={onHeaderMouseDown}
-        >
-          <span className="truncate text-base font-bold text-zinc-100">{node.name}</span>
-          <button
-            type="button"
-            onClick={onToggleChat}
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}
-          >
-            <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-
-        {node.chatOpen && (
-          <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div className="overflow-y-auto p-4 space-y-2" style={{ height: MGR_CHAT_H }}>
-              <p className="text-xs text-zinc-600 text-center pt-12">
-                Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
-              </p>
-            </div>
-            <div className="border-t border-zinc-800 p-3">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder={`Message ${node.name}…`}
-                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600"
-                />
-                <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-50">Send</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const TM_NODE_W = 160;
-const TM_NODE_H = 44;
-
-function DraggableTeammateNode({ node, onPosChange, onDoubleClick }) {
-  const dragging = useRef(false);
-  const didDrag = useRef(false);
-  const start = useRef({ mx: 0, my: 0, px: 0, py: 0 });
-
-  function onMouseDown(e) {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    dragging.current = true;
-    didDrag.current = false;
-    start.current = { mx: e.clientX, my: e.clientY, px: node.pos.x, py: node.pos.y };
-
-    function onMove(e) {
-      if (!dragging.current) return;
-      didDrag.current = true;
-      onPosChange({
-        x: start.current.px + (e.clientX - start.current.mx),
-        y: start.current.py + (e.clientY - start.current.my),
-      });
-    }
-    function onUp() {
-      dragging.current = false;
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
-    }
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
-  }
-
-  return (
-    <div
-      style={{ position: "absolute", left: node.pos.x, top: node.pos.y, zIndex: 5 }}
-    >
-      <div
-        className="flex items-center justify-center rounded-xl border border-zinc-600 bg-zinc-800/90 px-5 cursor-grab active:cursor-grabbing select-none shadow-lg shadow-black/40 hover:border-zinc-500 hover:bg-zinc-800 transition-colors"
-        style={{ height: TM_NODE_H, width: TM_NODE_W }}
-        onMouseDown={onMouseDown}
-        onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick(); }}
-        title="Double-click to open chat"
-      >
-        <span className="truncate text-sm font-semibold text-zinc-200">{node.name}</span>
-      </div>
-    </div>
   );
 }
