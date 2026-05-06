@@ -758,7 +758,7 @@ export default function DashboardPage() {
     const { id } = result.data;
     setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: null }]);
   }
-
+  
   async function handleCreateManager(name) {
     const pos = { x: -MGR_W / 2, y: -MGR_HEADER_H / 2 };
     console.log("[handleCreateManager] workspaceId:", workspaceId, "userId:", userId);
