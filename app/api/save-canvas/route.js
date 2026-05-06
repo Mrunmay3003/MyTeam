@@ -18,7 +18,6 @@ export async function POST(request) {
 
     const supabaseAdmin = getAdmin();
 
-    // Verify workspace belongs to this user
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
       .select("id")
@@ -30,45 +29,28 @@ export async function POST(request) {
       return Response.json({ error: "Workspace not found or unauthorized." }, { status: 403 });
     }
 
-    // ── CREATE MANAGER NODE ──────────────────────────────────────────────────
     if (action === "create_manager") {
       const { name, pos } = payload;
       const { data, error } = await supabaseAdmin
         .from("chats")
-        .insert({
-          workspace_id: workspaceId,
-          type: "manager",
-          name,
-          pos_x: pos.x,
-          pos_y: pos.y,
-          chat_open: false,
-        })
+        .insert({ workspace_id: workspaceId, type: "manager", name, pos_x: pos.x, pos_y: pos.y, chat_open: false })
         .select("id, name, pos_x, pos_y, chat_open")
         .single();
       if (error) return Response.json({ error: error.message }, { status: 500 });
       return Response.json({ ok: true, data });
     }
 
-    // ── CREATE TEAMMATE NODE ─────────────────────────────────────────────────
     if (action === "create_teammate") {
       const { name, pos } = payload;
       const { data, error } = await supabaseAdmin
         .from("chats")
-        .insert({
-          workspace_id: workspaceId,
-          type: "teammate",
-          name,
-          pos_x: pos.x,
-          pos_y: pos.y,
-          chat_open: false,
-        })
+        .insert({ workspace_id: workspaceId, type: "teammate", name, pos_x: pos.x, pos_y: pos.y, chat_open: false })
         .select("id, name, pos_x, pos_y, assigned_email")
         .single();
       if (error) return Response.json({ error: error.message }, { status: 500 });
       return Response.json({ ok: true, data });
     }
 
-    // ── UPDATE POSITION ──────────────────────────────────────────────────────
     if (action === "update_pos") {
       const { chatId, pos } = payload;
       const { error } = await supabaseAdmin
@@ -80,7 +62,17 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
-    // ── TOGGLE MANAGER CHAT OPEN ─────────────────────────────────────────────
+    if (action === "update_size") {
+      const { chatId, nodeW, nodeH } = payload;
+      const { error } = await supabaseAdmin
+        .from("chats")
+        .update({ node_w: nodeW, node_h: nodeH })
+        .eq("id", chatId)
+        .eq("workspace_id", workspaceId);
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
+
     if (action === "toggle_chat_open") {
       const { chatId, chatOpen } = payload;
       const { error } = await supabaseAdmin
@@ -92,7 +84,6 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
-    // ── ASSIGN EMAIL ─────────────────────────────────────────────────────────
     if (action === "assign_email") {
       const { chatId, email } = payload;
       const { error } = await supabaseAdmin
@@ -104,7 +95,6 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
-    // ── UNASSIGN EMAIL ───────────────────────────────────────────────────────
     if (action === "unassign_email") {
       const { chatId } = payload;
       const { error } = await supabaseAdmin
@@ -116,7 +106,6 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
-    // ── DELETE NODE ──────────────────────────────────────────────────────────
     if (action === "delete_chat") {
       const { chatId } = payload;
       const { error } = await supabaseAdmin
@@ -124,6 +113,26 @@ export async function POST(request) {
         .delete()
         .eq("id", chatId)
         .eq("workspace_id", workspaceId);
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
+
+    if (action === "rename_chat") {
+      const { chatId, name } = payload;
+      const { error } = await supabaseAdmin
+        .from("chats")
+        .update({ name })
+        .eq("id", chatId)
+        .eq("workspace_id", workspaceId);
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
+
+    if (action === "save_viewport") {
+      const { offsetX, offsetY, scale } = payload;
+      const { error } = await supabaseAdmin
+        .from("workspace_settings")
+        .upsert({ workspace_id: workspaceId, canvas_offset_x: offsetX, canvas_offset_y: offsetY, canvas_scale: scale, updated_at: new Date().toISOString() }, { onConflict: "workspace_id" });
       if (error) return Response.json({ error: error.message }, { status: 500 });
       return Response.json({ ok: true });
     }
