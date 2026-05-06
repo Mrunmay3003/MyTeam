@@ -23,7 +23,7 @@ export async function POST(request) {
       .from("workspaces")
       .select("id")
       .eq("id", workspaceId)
-      .or(`owner_user_id.eq.${userId},user_id.eq.${userId}`)
+      .eq("owner_user_id", userId)
       .single();
 
     if (wsError || !workspace) {
