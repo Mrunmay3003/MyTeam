@@ -136,8 +136,61 @@ function NewChatModal({ title, placeholder = "Member or role name…", onClose, 
         </form>
       </div>
     </div>
+  ); 
+}
+
+function RenameModal({ currentName, onClose, onRename, existingNames = [] }) {
+  const [name, setName] = useState(currentName);
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    if (trimmed.toLowerCase() === currentName.toLowerCase()) { onClose(); return; }
+    if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) {
+      setError(`"${trimmed}" already exists.`);
+      return;
+    }
+    onRename(trimmed);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-100">Rename</h2>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-zinc-500" htmlFor="rename-input">New name</label>
+            <input
+              ref={inputRef}
+              id="rename-input"
+              type="text"
+              value={name}
+              onChange={(e) => { setName(e.target.value); setError(""); }}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25"
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
+          </div>
+          <button type="submit" disabled={!name.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
+            Rename
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }
+
 
 // ── Assign Modal ───────────────────────────────────────────────────────────────
 function AssignModal({ teammate, onClose, onAssign, onUnassign }) {
@@ -207,7 +260,7 @@ function AssignModal({ teammate, onClose, onAssign, onUnassign }) {
 }
 
 // ── Manager Context Menu ───────────────────────────────────────────────────────
-function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
+function ManagerContextMenu({ x, y, onNewTeammate, onRename, onDelete, onClose }) {
   const ref = useRef(null);
   useEffect(() => {
     function handler(e) { if (!ref.current?.contains(e.target)) onClose(); }
@@ -223,6 +276,10 @@ function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
         New Teammate Chat
       </button>
       <div className="my-1 mx-2 border-t border-zinc-700" />
+      <button type="button" onClick={() => { onRename(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+        Rename
+      </button>
+      <div className="my-1 mx-2 border-t border-zinc-700" />
       <button type="button" onClick={() => { onDelete(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-400 transition-colors hover:bg-zinc-700/80">
         Delete Chat
       </button>
@@ -231,7 +288,7 @@ function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
 }
 
 // ── Teammate Context Menu ──────────────────────────────────────────────────────
-function TeammateContextMenu({ x, y, onAssign, onClose }) {
+function TeammateContextMenu({ x, y, onAssign, onRename, onClose }) {
   const ref = useRef(null);
   useEffect(() => {
     function handler(e) { if (!ref.current?.contains(e.target)) onClose(); }
@@ -244,6 +301,10 @@ function TeammateContextMenu({ x, y, onAssign, onClose }) {
     <div ref={ref} className="fixed z-50 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50" style={{ left: x, top: y, minWidth: 160 }}>
       <button type="button" onClick={() => { onAssign(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
         Assign
+      </button>
+      <div className="my-1 mx-2 border-t border-zinc-700" />
+      <button type="button" onClick={() => { onRename(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+        Rename
       </button>
     </div>
   );
@@ -415,7 +476,8 @@ export default function DashboardPage() {
 
   // Modals
   const [modalType, setModalType] = useState(null); // null | 'teammate' | 'manager'
-  const [assignTargetId, setAssignTargetId] = useState(null); // teammate id for assign modal
+  const [assignTargetId, setAssignTargetId] = useState(null);
+  const [renameTargetId, setRenameTargetId] = useState(null); // 'manager' | teammate id // teammate id for assign modal
 
   // Centre view
   const [centreView, setCentreView] = useState("canvas");
@@ -444,7 +506,23 @@ export default function DashboardPage() {
   const isResizingRef = useRef(false);
   const mgrPosSaveTimer = useRef(null);
   const tmPosSaveTimers = useRef({});
+  const viewportSaveTimer = useRef(null);
 
+  function saveViewport(offset, scale) {
+    if (!workspaceId || !userId) return;
+    clearTimeout(viewportSaveTimer.current);
+    viewportSaveTimer.current = setTimeout(async () => {
+      try {
+        await fetch("/api/save-viewport", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ workspaceId, userId, offsetX: offset.x, offsetY: offset.y, scale }),
+        });
+      } catch (err) {
+        console.error("[saveViewport] error:", err);
+      }
+    }, 800);
+  }
   async function saveCanvas(action, payload) {
     if (!workspaceId || !userId) return null;
     try {
@@ -460,6 +538,18 @@ export default function DashboardPage() {
       console.error("[saveCanvas] fetch error:", err);
       return null;
     }
+  }
+
+  async function saveCanvas(action, payload) {
+    // ... existing code
+  }
+
+  function saveViewport(offset, scale) {
+    if (!workspaceId || !userId) return;
+    clearTimeout(viewportSaveTimer.current);
+    viewportSaveTimer.current = setTimeout(() => {
+      saveCanvas("save_viewport", { offsetX: offset.x, offsetY: offset.y, scale });
+    }, 800);
   }
 
   // Derived
@@ -487,8 +577,10 @@ export default function DashboardPage() {
     panStartRef.current = { x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y };
     function onMouseMove(e) {
       if (!isPanningRef.current) return;
-      setCanvasOffset({ x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y });
-    }
+      
+    }const newOffset = { x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y };
+      setCanvasOffset(newOffset);
+      saveViewport(newOffset, canvasScale);
     function onMouseUp() {
       isPanningRef.current = false;
       document.removeEventListener("mousemove", onMouseMove);
@@ -508,8 +600,10 @@ export default function DashboardPage() {
     const factor = e.deltaY < 0 ? 1.1 : 0.9;
     const newScale = Math.min(3, Math.max(0.15, canvasScale * factor));
     const ratio = newScale / canvasScale;
+    const newOffset = { x: mouseX - (mouseX - canvasOffset.x) * ratio, y: mouseY - (mouseY - canvasOffset.y) * ratio };
     setCanvasScale(newScale);
-    setCanvasOffset({ x: mouseX - (mouseX - canvasOffset.x) * ratio, y: mouseY - (mouseY - canvasOffset.y) * ratio });
+    setCanvasOffset(newOffset);
+    saveViewport(newOffset, newScale);
   }
 
   // ── Focus/reset view on manager node ────────────────────────────────────────
@@ -520,8 +614,11 @@ export default function DashboardPage() {
     const cy = rect.height / 2;
     const newScale = 1;
     if (managerNode) {
-      const mgCx = managerNode.pos.x + MGR_W / 2;
-      const mgCy = managerNode.pos.y + MGR_HEADER_H / 2;
+      const totalH = managerNode.chatOpen
+        ? MGR_HEADER_H + (managerNode.nodeH ?? MGR_CHAT_H) + MGR_SEND_H
+        : MGR_HEADER_H;
+      const mgCx = managerNode.pos.x + (managerNode.nodeW ?? MGR_W) / 2;
+      const mgCy = managerNode.pos.y + totalH / 2;
       setCanvasScale(newScale);
       setCanvasOffset({ x: cx - mgCx * newScale, y: cy - mgCy * newScale });
     } else {
@@ -580,6 +677,7 @@ export default function DashboardPage() {
       if (cancelled) return;
       setWorkspaceId(workspace.id);
       await loadCanvasNodes(workspace.id);
+      await loadViewport(workspace.id);
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
@@ -637,6 +735,18 @@ export default function DashboardPage() {
       assignedEmail: c.assigned_email ?? null,
     }));
     if (tms.length > 0) setTeammates(tms);
+  }
+
+  async function loadViewport(wsId) {
+    const { data, error } = await supabase
+      .from("workspace_settings")
+      .select("canvas_offset_x, canvas_offset_y, canvas_scale")
+      .eq("workspace_id", wsId)
+      .maybeSingle();
+    if (error || !data) return;
+    setCanvasOffset({ x: data.canvas_offset_x ?? 0, y: data.canvas_offset_y ?? 0 });
+    setCanvasScale(data.canvas_scale ?? 1);
+    canvasInitializedRef.current = true;
   }
   async function ensureWorkspace(currentUserId) {
     const d = await supabase.from("workspaces").select("id").eq("user_id", currentUserId).limit(1).maybeSingle();
@@ -807,6 +917,15 @@ export default function DashboardPage() {
     saveCanvas("unassign_email", { chatId: id });
   }
 
+  function handleRename(id, newName) {
+    if (id === "manager") {
+      setManagerNode((prev) => prev ? { ...prev, name: newName } : prev);
+      if (managerNode) saveCanvas("rename_chat", { chatId: managerNode.id, name: newName });
+    } else {function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
+      setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, name: newName } : t));
+      saveCanvas("rename_chat", { chatId: id, name: newName });
+    }
+  }
   function openTeammateChat(id) { setActiveChatId(id); setCentreView("chat"); }
   function closeTeammateChat() { setActiveChatId(null); setCentreView("canvas"); }
   function goToCanvas() { setActiveChatId(null); setCentreView("canvas"); }
@@ -839,6 +958,14 @@ export default function DashboardPage() {
       {modalType === "manager" && (
         <NewChatModal title="New Manager Chat" onClose={() => setModalType(null)} onCreate={handleCreateManager} existingNames={allNames} />
       )}
+      {renameTargetId && (
+        <RenameModal
+          currentName={renameTargetId === "manager" ? managerNode?.name ?? "" : teammates.find((t) => t.id === renameTargetId)?.name ?? ""}
+          existingNames={allNames}
+          onClose={() => setRenameTargetId(null)}
+          onRename={(newName) => handleRename(renameTargetId, newName)}
+        />
+      )}
       {assignTargetId && assignTarget && (
         <AssignModal
           teammate={assignTarget}
@@ -853,6 +980,7 @@ export default function DashboardPage() {
         <ManagerContextMenu
           x={mgrCtxMenu.x} y={mgrCtxMenu.y}
           onNewTeammate={() => setModalType("teammate")}
+          onRename={() => setRenameTargetId("manager")}
           onDelete={() => { if (managerNode) saveCanvas("delete_chat", { chatId: managerNode.id }); setManagerNode(null); }}
           onClose={() => setMgrCtxMenu(null)}
         />
@@ -861,6 +989,7 @@ export default function DashboardPage() {
         <TeammateContextMenu
           x={tmCtxMenu.x} y={tmCtxMenu.y}
           onAssign={() => setAssignTargetId(tmCtxMenu.id)}
+          onRename={() => setRenameTargetId(tmCtxMenu.id)}
           onClose={() => setTmCtxMenu(null)}
         />
       )}

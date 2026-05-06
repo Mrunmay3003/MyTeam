@@ -128,6 +128,24 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    if (action === "save_viewport") {
+      const { offsetX, offsetY, scale } = payload;
+      const { error } = await supabaseAdmin
+        .from("workspace_settings")
+        .upsert({ workspace_id: workspaceId, canvas_offset_x: offsetX, canvas_offset_y: offsetY, canvas_scale: scale, updated_at: new Date().toISOString() }, { onConflict: "workspace_id" });
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
+    if (action === "rename_chat") {
+      const { chatId, name } = payload;
+      const { error } = await supabaseAdmin
+        .from("chats")
+        .update({ name })
+        .eq("id", chatId)
+        .eq("workspace_id", workspaceId);
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
   } catch (err) {
