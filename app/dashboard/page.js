@@ -136,7 +136,7 @@ function NewChatModal({ title, placeholder = "Member or role name…", onClose, 
         </form>
       </div>
     </div>
-  ); 
+  );
 }
 
 function RenameModal({ currentName, onClose, onRename, existingNames = [] }) {
@@ -577,10 +577,10 @@ export default function DashboardPage() {
     panStartRef.current = { x: e.clientX - canvasOffset.x, y: e.clientY - canvasOffset.y };
     function onMouseMove(e) {
       if (!isPanningRef.current) return;
-      
-    }const newOffset = { x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y };
-      setCanvasOffset(newOffset);
-      saveViewport(newOffset, canvasScale);
+
+    } const newOffset = { x: e.clientX - panStartRef.current.x, y: e.clientY - panStartRef.current.y };
+    setCanvasOffset(newOffset);
+    saveViewport(newOffset, canvasScale);
     function onMouseUp() {
       isPanningRef.current = false;
       document.removeEventListener("mousemove", onMouseMove);
@@ -868,7 +868,7 @@ export default function DashboardPage() {
     const { id } = result.data;
     setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: null }]);
   }
-  
+
   async function handleCreateManager(name) {
     const pos = { x: -MGR_W / 2, y: -MGR_HEADER_H / 2 };
     console.log("[handleCreateManager] workspaceId:", workspaceId, "userId:", userId);
@@ -921,27 +921,28 @@ export default function DashboardPage() {
     if (id === "manager") {
       setManagerNode((prev) => prev ? { ...prev, name: newName } : prev);
       if (managerNode) saveCanvas("rename_chat", { chatId: managerNode.id, name: newName });
-    } else {function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
-      setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, name: newName } : t));
-      saveCanvas("rename_chat", { chatId: id, name: newName });
+    } else {
+      function ManagerContextMenu({ x, y, onNewTeammate, onDelete, onClose }) {
+        setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, name: newName } : t));
+        saveCanvas("rename_chat", { chatId: id, name: newName });
+      }
     }
-  }
-  function openTeammateChat(id) { setActiveChatId(id); setCentreView("chat"); }
-  function closeTeammateChat() { setActiveChatId(null); setCentreView("canvas"); }
-  function goToCanvas() { setActiveChatId(null); setCentreView("canvas"); }
+    function openTeammateChat(id) { setActiveChatId(id); setCentreView("chat"); }
+    function closeTeammateChat() { setActiveChatId(null); setCentreView("canvas"); }
+    function goToCanvas() { setActiveChatId(null); setCentreView("canvas"); }
 
-  function openTmCtxMenu(e, id) {
-    e.preventDefault();
-    e.stopPropagation();
-    setTmCtxMenu({ x: e.clientX, y: e.clientY, id });
-  }
+    function openTmCtxMenu(e, id) {
+      e.preventDefault();
+      e.stopPropagation();
+      setTmCtxMenu({ x: e.clientX, y: e.clientY, id });
+    }
 
-  if (!authReady) return null;
+    if (!authReady) return null;
 
-  return (
-    <>
-      {/* Global thin scrollbars */}
-      <style>{`
+    return (
+      <>
+        {/* Global thin scrollbars */}
+        <style>{`
         * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
         *::-webkit-scrollbar { width: 3px; height: 3px; }
         *::-webkit-scrollbar-track { background: transparent; }
@@ -951,315 +952,316 @@ export default function DashboardPage() {
         *::-webkit-scrollbar-corner { background: transparent; }
       `}</style>
 
-      {/* Modals */}
-      {modalType === "teammate" && (
-        <NewChatModal title="New Teammate Chat" onClose={() => setModalType(null)} onCreate={handleCreateTeammate} existingNames={allNames} />
-      )}
-      {modalType === "manager" && (
-        <NewChatModal title="New Manager Chat" onClose={() => setModalType(null)} onCreate={handleCreateManager} existingNames={allNames} />
-      )}
-      {renameTargetId && (
-        <RenameModal
-          currentName={renameTargetId === "manager" ? managerNode?.name ?? "" : teammates.find((t) => t.id === renameTargetId)?.name ?? ""}
-          existingNames={allNames}
-          onClose={() => setRenameTargetId(null)}
-          onRename={(newName) => handleRename(renameTargetId, newName)}
-        />
-      )}
-      {assignTargetId && assignTarget && (
-        <AssignModal
-          teammate={assignTarget}
-          onClose={() => setAssignTargetId(null)}
-          onAssign={(email) => { assignTeammate(assignTargetId, email); setAssignTargetId(null); }}
-          onUnassign={() => unassignTeammate(assignTargetId)}
-        />
-      )}
+        {/* Modals */}
+        {modalType === "teammate" && (
+          <NewChatModal title="New Teammate Chat" onClose={() => setModalType(null)} onCreate={handleCreateTeammate} existingNames={allNames} />
+        )}
+        {modalType === "manager" && (
+          <NewChatModal title="New Manager Chat" onClose={() => setModalType(null)} onCreate={handleCreateManager} existingNames={allNames} />
+        )}
+        {renameTargetId && (
+          <RenameModal
+            currentName={renameTargetId === "manager" ? managerNode?.name ?? "" : teammates.find((t) => t.id === renameTargetId)?.name ?? ""}
+            existingNames={allNames}
+            onClose={() => setRenameTargetId(null)}
+            onRename={(newName) => handleRename(renameTargetId, newName)}
+          />
+        )}
+        {assignTargetId && assignTarget && (
+          <AssignModal
+            teammate={assignTarget}
+            onClose={() => setAssignTargetId(null)}
+            onAssign={(email) => { assignTeammate(assignTargetId, email); setAssignTargetId(null); }}
+            onUnassign={() => unassignTeammate(assignTargetId)}
+          />
+        )}
 
-      {/* Context menus */}
-      {mgrCtxMenu && (
-        <ManagerContextMenu
-          x={mgrCtxMenu.x} y={mgrCtxMenu.y}
-          onNewTeammate={() => setModalType("teammate")}
-          onRename={() => setRenameTargetId("manager")}
-          onDelete={() => { if (managerNode) saveCanvas("delete_chat", { chatId: managerNode.id }); setManagerNode(null); }}
-          onClose={() => setMgrCtxMenu(null)}
-        />
-      )}
-      {tmCtxMenu && (
-        <TeammateContextMenu
-          x={tmCtxMenu.x} y={tmCtxMenu.y}
-          onAssign={() => setAssignTargetId(tmCtxMenu.id)}
-          onRename={() => setRenameTargetId(tmCtxMenu.id)}
-          onClose={() => setTmCtxMenu(null)}
-        />
-      )}
+        {/* Context menus */}
+        {mgrCtxMenu && (
+          <ManagerContextMenu
+            x={mgrCtxMenu.x} y={mgrCtxMenu.y}
+            onNewTeammate={() => setModalType("teammate")}
+            onRename={() => setRenameTargetId("manager")}
+            onDelete={() => { if (managerNode) saveCanvas("delete_chat", { chatId: managerNode.id }); setManagerNode(null); }}
+            onClose={() => setMgrCtxMenu(null)}
+          />
+        )}
+        {tmCtxMenu && (
+          <TeammateContextMenu
+            x={tmCtxMenu.x} y={tmCtxMenu.y}
+            onAssign={() => setAssignTargetId(tmCtxMenu.id)}
+            onRename={() => setRenameTargetId(tmCtxMenu.id)}
+            onClose={() => setTmCtxMenu(null)}
+          />
+        )}
 
-      <div className="flex h-screen min-h-0 flex-col bg-zinc-900 font-sans text-zinc-100">
-        {/* Header */}
-        <header className="flex h-12 shrink-0 items-center justify-end border-b border-zinc-800 bg-zinc-900 px-3">
-          <div className="relative" ref={menuRef}>
-            <button type="button" onClick={() => setMenuOpen((o) => !o)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200 ring-1 ring-zinc-600 transition-colors hover:bg-zinc-600" aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Account menu">
-              Me
-            </button>
-            {menuOpen && (
-              <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/40">
-                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700/80" onClick={() => setMenuOpen(false)}>Profile</button>
-                <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700/80" onClick={handleSignOut}>Log Out</button>
-              </div>
-            )}
-          </div>
-        </header>
-
-        <div className="flex min-h-0 flex-1">
-
-          {/* ── Left Sidebar ── */}
-          <aside style={{ width: sidebarOpen ? "260px" : "52px" }} className="relative flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out overflow-hidden">
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
-              {sidebarOpen ? (
-                <>
-                  <p className="truncate px-1 text-xs font-medium uppercase tracking-wide text-zinc-500">Utility</p>
-                  <button type="button" onClick={() => setSidebarOpen(false)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300" aria-label="Collapse sidebar">
-                    <ChevronLeftIcon />
-                  </button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setSidebarOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300" aria-label="Expand sidebar">
-                  <ChevronRightIcon />
-                </button>
+        <div className="flex h-screen min-h-0 flex-col bg-zinc-900 font-sans text-zinc-100">
+          {/* Header */}
+          <header className="flex h-12 shrink-0 items-center justify-end border-b border-zinc-800 bg-zinc-900 px-3">
+            <div className="relative" ref={menuRef}>
+              <button type="button" onClick={() => setMenuOpen((o) => !o)} className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200 ring-1 ring-zinc-600 transition-colors hover:bg-zinc-600" aria-expanded={menuOpen} aria-haspopup="menu" aria-label="Account menu">
+                Me
+              </button>
+              {menuOpen && (
+                <div role="menu" className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/40">
+                  <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700/80" onClick={() => setMenuOpen(false)}>Profile</button>
+                  <button type="button" role="menuitem" className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700/80" onClick={handleSignOut}>Log Out</button>
+                </div>
               )}
             </div>
+          </header>
 
-            <nav className="flex-1 overflow-y-auto p-2" aria-label="Navigation">
-              <ul className="space-y-1">
-                {/* Canvas home */}
-                <li>
-                  {sidebarOpen ? (
-                    <button type="button" onClick={goToCanvas} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
-                      <CanvasIcon className="shrink-0" />
-                      Canvas
-                    </button>
-                  ) : (
-                    <button type="button" onClick={goToCanvas} title="Canvas" className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full transition-colors ${centreView === "canvas" ? "bg-zinc-700 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}>
-                      <CanvasIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </li>
+          <div className="flex min-h-0 flex-1">
 
-                {/* Teammate chats sub-label */}
+            {/* ── Left Sidebar ── */}
+            <aside style={{ width: sidebarOpen ? "260px" : "52px" }} className="relative flex shrink-0 flex-col border-r border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out overflow-hidden">
+              <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
                 {sidebarOpen ? (
-                  <li aria-hidden>
-                    <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Teammate Chats</p>
-                  </li>
+                  <>
+                    <p className="truncate px-1 text-xs font-medium uppercase tracking-wide text-zinc-500">Utility</p>
+                    <button type="button" onClick={() => setSidebarOpen(false)} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300" aria-label="Collapse sidebar">
+                      <ChevronLeftIcon />
+                    </button>
+                  </>
                 ) : (
-                  <li aria-hidden><div className="my-1 mx-1 border-t border-zinc-800" /></li>
+                  <button type="button" onClick={() => setSidebarOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300" aria-label="Expand sidebar">
+                    <ChevronRightIcon />
+                  </button>
                 )}
+              </div>
 
-                {/* Teammates */}
-                {teammates.map((tm) => (
-                  <li key={tm.id}>
+              <nav className="flex-1 overflow-y-auto p-2" aria-label="Navigation">
+                <ul className="space-y-1">
+                  {/* Canvas home */}
+                  <li>
                     {sidebarOpen ? (
-                      <button
-                        type="button"
-                        onClick={() => openTeammateChat(tm.id)}
-                        onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
-                        className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors truncate block ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}
-                      >
-                        {tm.name}
+                      <button type="button" onClick={goToCanvas} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
+                        <CanvasIcon className="shrink-0" />
+                        Canvas
                       </button>
                     ) : (
-                      <button
-                        type="button"
-                        onClick={() => openTeammateChat(tm.id)}
-                        onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
-                        title={tm.name}
-                        className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-colors ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-600 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}
-                      >
-                        {getInitials(tm.name)}
+                      <button type="button" onClick={goToCanvas} title="Canvas" className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full transition-colors ${centreView === "canvas" ? "bg-zinc-700 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}>
+                        <CanvasIcon className="h-4 w-4" />
                       </button>
                     )}
                   </li>
-                ))}
 
-                {/* + New chat */}
-                <li>
+                  {/* Teammate chats sub-label */}
                   {sidebarOpen ? (
-                    <button type="button" onClick={() => setModalType("teammate")} className="mt-0.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:border-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300">
-                      <PlusIcon className="h-4 w-4 shrink-0 opacity-80" />
-                      New chat
-                    </button>
+                    <li aria-hidden>
+                      <p className="mt-3 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">Teammate Chats</p>
+                    </li>
                   ) : (
-                    <button type="button" onClick={() => setModalType("teammate")} title="New chat" className="mt-0.5 flex h-8 w-8 mx-auto items-center justify-center rounded-full border border-dashed border-zinc-700 text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-300">
-                      <PlusIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </li>
-              </ul>
-            </nav>
-
-            {/* Settings */}
-            <div className="border-t border-zinc-800 p-2">
-              {sidebarOpen ? (
-                <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
-                  <SettingsIcon className="shrink-0" />Settings
-                </button>
-              ) : (
-                <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
-                  <SettingsIcon />
-                </button>
-              )}
-            </div>
-          </aside>
-
-          {/* ── Centre Panel ── */}
-          <main className="flex min-w-0 flex-1 flex-col bg-zinc-900 overflow-hidden">
-
-            {centreView === "canvas" ? (
-              <div
-                ref={canvasContainerRef}
-                className="relative flex-1 overflow-hidden select-none"
-                onMouseDown={handleCanvasMouseDown}
-                onWheel={handleCanvasWheel}
-                onContextMenu={(e) => e.preventDefault()}
-              >
-                {/* Dot grid */}
-                <div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    backgroundImage: "radial-gradient(circle, #3f3f46 1px, transparent 1px)",
-                    backgroundSize: `${28 * canvasScale}px ${28 * canvasScale}px`,
-                    backgroundPosition: `${canvasOffset.x}px ${canvasOffset.y}px`,
-                    opacity: 0.5,
-                  }}
-                />
-
-                {/* Canvas world */}
-                <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", transformOrigin: "0 0", transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})` }}>
-                  <ConnectionLines managerNode={managerNode} teammates={teammates} />
-
-                  {managerNode && (
-                    <DraggableManagerNode
-                      node={managerNode}
-                      canvasScale={canvasScale}
-                      onToggleChat={toggleManagerChat}
-                      onPosChange={setManagerPos}
-                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMgrCtxMenu({ x: e.clientX, y: e.clientY }); }}
-                    />
+                    <li aria-hidden><div className="my-1 mx-1 border-t border-zinc-800" /></li>
                   )}
 
+                  {/* Teammates */}
                   {teammates.map((tm) => (
-                    <DraggableTeammateNode
-                      key={tm.id}
-                      node={tm}
-                      canvasScale={canvasScale}
-                      onPosChange={(pos) => setTeammatePos(tm.id, pos)}
-                      onDoubleClick={() => openTeammateChat(tm.id)}
-                      onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
-                    />
-                  ))}
-
-                  {!managerNode && (
-                    <div style={{ position: "absolute", left: -120, top: -44 }}>
-                      <button
-                        type="button"
-                        onClick={() => setModalType("manager")}
-                        className="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-600 bg-zinc-900/80 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 active:scale-95"
-                        style={{ width: 240, height: 88 }}
-                      >
-                        <span className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800">
-                          <PlusIcon className="h-5 w-5" />
-                        </span>
-                        <span className="text-sm font-medium">Create Manager Chat</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom-right controls */}
-                <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 pointer-events-none">
-                  <button
-                    type="button"
-                    onClick={resetViewToManager}
-                    title="Focus manager chat"
-                    className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800/90 text-zinc-400 shadow-md transition-colors hover:border-zinc-500 hover:bg-zinc-700 hover:text-zinc-200"
-                  >
-                    <FocusIcon />
-                  </button>
-                  <p className="text-[11px] text-zinc-600 select-none">Scroll to zoom · Middle-click drag to pan · Right-click to edit</p>
-                </div>
-              </div>
-
-            ) : (
-              /* Teammate chat view */
-              <div className="flex flex-1 flex-col min-h-0">
-                <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
-                  <h2 className="text-sm font-semibold text-zinc-200 truncate">{activeTeammate?.name ?? "Chat"}</h2>
-                  <button type="button" onClick={closeTeammateChat} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><XIcon /></button>
-                </div>
-                <div className="flex flex-1 flex-col items-center justify-center px-6">
-                  <p className="text-sm text-zinc-500">Chat log for <span className="text-zinc-300 font-medium">{activeTeammate?.name}</span> will appear here.</p>
-                </div>
-                <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-3">
-                  <div className="mx-auto flex max-w-3xl gap-2">
-                    <input type="text" placeholder={`Message ${activeTeammate?.name ?? ""}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30" />
-                    <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-50">Send</button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </main>
-
-          {/* ── Right Panel — Business Context ── */}
-          <aside style={{ width: contextOpen ? `${contextWidth}px` : "44px" }} className="relative flex shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out">
-            {contextOpen && (
-              <div onMouseDown={startContextResize} className="absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 hover:bg-zinc-600/60 transition-colors" />
-            )}
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
-              {contextOpen ? (
-                <>
-                  <h2 className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Context</h2>
-                  <button type="button" onClick={() => setContextOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><ChevronRightIcon /></button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"><ChevronLeftIcon /></button>
-              )}
-            </div>
-            {contextOpen && (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-                  {onboardingMessages.map((message, index) => {
-                    const key = message.id ?? `${message.role}-${index}`;
-                    const assistant = message.role === "assistant";
-                    return (
-                      <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
-                        {message.content}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="shrink-0 border-t border-zinc-800 p-3">
-                  {onboardingError && (
-                    <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>
-                  )}
-                  {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current && (
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] text-zinc-500">{remainingExchanges} exchanges before auto-summary</p>
-                      {onboardingUserMessageCount >= 2 && (
-                        <button type="button" onClick={() => void handleSummariseNowClick()} disabled={onboardingBusy || summariseConfirmLoading} className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50">
-                          Summarise Now
+                    <li key={tm.id}>
+                      {sidebarOpen ? (
+                        <button
+                          type="button"
+                          onClick={() => openTeammateChat(tm.id)}
+                          onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
+                          className={`w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors truncate block ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}
+                        >
+                          {tm.name}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => openTeammateChat(tm.id)}
+                          onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
+                          title={tm.name}
+                          className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-colors ${activeChatId === tm.id && centreView === "chat" ? "bg-zinc-600 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}
+                        >
+                          {getInitials(tm.name)}
                         </button>
                       )}
-                    </div>
-                  )}
-                  <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
-                    <input type="text" value={onboardingInput} onChange={(e) => setOnboardingInput(e.target.value)} placeholder="Reply..." disabled={onboardingBusy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50" />
-                    <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">Send</button>
-                  </form>
-                </div>
+                    </li>
+                  ))}
+
+                  {/* + New chat */}
+                  <li>
+                    {sidebarOpen ? (
+                      <button type="button" onClick={() => setModalType("teammate")} className="mt-0.5 flex w-full items-center gap-2 rounded-lg border border-dashed border-zinc-700 px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:border-zinc-500 hover:bg-zinc-800/40 hover:text-zinc-300">
+                        <PlusIcon className="h-4 w-4 shrink-0 opacity-80" />
+                        New chat
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => setModalType("teammate")} title="New chat" className="mt-0.5 flex h-8 w-8 mx-auto items-center justify-center rounded-full border border-dashed border-zinc-700 text-zinc-500 transition-colors hover:border-zinc-400 hover:text-zinc-300">
+                        <PlusIcon className="h-4 w-4" />
+                      </button>
+                    )}
+                  </li>
+                </ul>
+              </nav>
+
+              {/* Settings */}
+              <div className="border-t border-zinc-800 p-2">
+                {sidebarOpen ? (
+                  <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
+                    <SettingsIcon className="shrink-0" />Settings
+                  </button>
+                ) : (
+                  <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
+                    <SettingsIcon />
+                  </button>
+                )}
               </div>
-            )}
-          </aside>
+            </aside>
+
+            {/* ── Centre Panel ── */}
+            <main className="flex min-w-0 flex-1 flex-col bg-zinc-900 overflow-hidden">
+
+              {centreView === "canvas" ? (
+                <div
+                  ref={canvasContainerRef}
+                  className="relative flex-1 overflow-hidden select-none"
+                  onMouseDown={handleCanvasMouseDown}
+                  onWheel={handleCanvasWheel}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  {/* Dot grid */}
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      backgroundImage: "radial-gradient(circle, #3f3f46 1px, transparent 1px)",
+                      backgroundSize: `${28 * canvasScale}px ${28 * canvasScale}px`,
+                      backgroundPosition: `${canvasOffset.x}px ${canvasOffset.y}px`,
+                      opacity: 0.5,
+                    }}
+                  />
+
+                  {/* Canvas world */}
+                  <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", transformOrigin: "0 0", transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})` }}>
+                    <ConnectionLines managerNode={managerNode} teammates={teammates} />
+
+                    {managerNode && (
+                      <DraggableManagerNode
+                        node={managerNode}
+                        canvasScale={canvasScale}
+                        onToggleChat={toggleManagerChat}
+                        onPosChange={setManagerPos}
+                        onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMgrCtxMenu({ x: e.clientX, y: e.clientY }); }}
+                      />
+                    )}
+
+                    {teammates.map((tm) => (
+                      <DraggableTeammateNode
+                        key={tm.id}
+                        node={tm}
+                        canvasScale={canvasScale}
+                        onPosChange={(pos) => setTeammatePos(tm.id, pos)}
+                        onDoubleClick={() => openTeammateChat(tm.id)}
+                        onContextMenu={(e) => openTmCtxMenu(e, tm.id)}
+                      />
+                    ))}
+
+                    {!managerNode && (
+                      <div style={{ position: "absolute", left: -120, top: -44 }}>
+                        <button
+                          type="button"
+                          onClick={() => setModalType("manager")}
+                          className="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-600 bg-zinc-900/80 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 active:scale-95"
+                          style={{ width: 240, height: 88 }}
+                        >
+                          <span className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800">
+                            <PlusIcon className="h-5 w-5" />
+                          </span>
+                          <span className="text-sm font-medium">Create Manager Chat</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bottom-right controls */}
+                  <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 pointer-events-none">
+                    <button
+                      type="button"
+                      onClick={resetViewToManager}
+                      title="Focus manager chat"
+                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800/90 text-zinc-400 shadow-md transition-colors hover:border-zinc-500 hover:bg-zinc-700 hover:text-zinc-200"
+                    >
+                      <FocusIcon />
+                    </button>
+                    <p className="text-[11px] text-zinc-600 select-none">Scroll to zoom · Middle-click drag to pan · Right-click to edit</p>
+                  </div>
+                </div>
+
+              ) : (
+                /* Teammate chat view */
+                <div className="flex flex-1 flex-col min-h-0">
+                  <div className="flex h-11 shrink-0 items-center justify-between border-b border-zinc-800 px-4">
+                    <h2 className="text-sm font-semibold text-zinc-200 truncate">{activeTeammate?.name ?? "Chat"}</h2>
+                    <button type="button" onClick={closeTeammateChat} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><XIcon /></button>
+                  </div>
+                  <div className="flex flex-1 flex-col items-center justify-center px-6">
+                    <p className="text-sm text-zinc-500">Chat log for <span className="text-zinc-300 font-medium">{activeTeammate?.name}</span> will appear here.</p>
+                  </div>
+                  <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-3">
+                    <div className="mx-auto flex max-w-3xl gap-2">
+                      <input type="text" placeholder={`Message ${activeTeammate?.name ?? ""}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30" />
+                      <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-50">Send</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </main>
+
+            {/* ── Right Panel — Business Context ── */}
+            <aside style={{ width: contextOpen ? `${contextWidth}px` : "44px" }} className="relative flex shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out">
+              {contextOpen && (
+                <div onMouseDown={startContextResize} className="absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 hover:bg-zinc-600/60 transition-colors" />
+              )}
+              <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
+                {contextOpen ? (
+                  <>
+                    <h2 className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Context</h2>
+                    <button type="button" onClick={() => setContextOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><ChevronRightIcon /></button>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"><ChevronLeftIcon /></button>
+                )}
+              </div>
+              {contextOpen && (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+                    {onboardingMessages.map((message, index) => {
+                      const key = message.id ?? `${message.role}-${index}`;
+                      const assistant = message.role === "assistant";
+                      return (
+                        <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
+                          {message.content}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="shrink-0 border-t border-zinc-800 p-3">
+                    {onboardingError && (
+                      <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>
+                    )}
+                    {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current && (
+                      <div className="mb-2 flex items-center justify-between">
+                        <p className="text-[11px] text-zinc-500">{remainingExchanges} exchanges before auto-summary</p>
+                        {onboardingUserMessageCount >= 2 && (
+                          <button type="button" onClick={() => void handleSummariseNowClick()} disabled={onboardingBusy || summariseConfirmLoading} className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50">
+                            Summarise Now
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
+                      <input type="text" value={onboardingInput} onChange={(e) => setOnboardingInput(e.target.value)} placeholder="Reply..." disabled={onboardingBusy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50" />
+                      <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">Send</button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </aside>
+          </div>
         </div>
-      </div>
-    </>
-  );
+      </>
+    );
+  }
 }
