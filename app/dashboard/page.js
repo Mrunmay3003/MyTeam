@@ -759,8 +759,14 @@ export default function DashboardPage() {
     setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: null }]);
   }
 
-  function handleCreateManager(name) {
-    setManagerNode({ id: Date.now(), name, chatOpen: false, pos: { x: -MGR_W / 2, y: -MGR_HEADER_H / 2 } });
+  async function handleCreateManager(name) {
+    const pos = { x: -MGR_W / 2, y: -MGR_HEADER_H / 2 };
+    console.log("[handleCreateManager] workspaceId:", workspaceId, "userId:", userId);
+    const result = await saveCanvas("create_manager", { name, pos });
+    console.log("[handleCreateManager] result:", result);
+    if (!result?.data) return;
+    const { id } = result.data;
+    setManagerNode({ id, name, chatOpen: false, pos });
   }
 
   function toggleManagerChat() {
