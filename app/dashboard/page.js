@@ -442,6 +442,25 @@ export default function DashboardPage() {
   const businessProfileSaveCompleteRef = useRef(false);
   const contextScrollRef = useRef(null);
   const isResizingRef = useRef(false);
+  const mgrPosSaveTimer = useRef(null);
+  const tmPosSaveTimers = useRef({});
+
+  async function saveCanvas(action, payload) {
+    if (!workspaceId || !userId) return null;
+    try {
+      const res = await fetch("/api/save-canvas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, workspaceId, userId, payload }),
+      });
+      const json = await res.json();
+      if (!res.ok) { console.error("[saveCanvas] error:", json?.error); return null; }
+      return json;
+    } catch (err) {
+      console.error("[saveCanvas] fetch error:", err);
+      return null;
+    }
+  }
 
   // Derived
   const activeTeammate = useMemo(() => teammates.find((t) => t.id === activeChatId), [teammates, activeChatId]);
@@ -720,23 +739,6 @@ export default function DashboardPage() {
 
   async function handleOnboardingSubmit(e) { e.preventDefault(); await submitOnboardingMessage(onboardingInput); }
 
-  // ── Canvas node actions ──────────────────────────────────────────────────────
-  async function saveCanvas(action, payload) {
-    if (!workspaceId || !userId) return null;
-    try {
-      const res = await fetch("/api/save-canvas", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, workspaceId, userId, payload }),
-      });
-      const json = await res.json();
-      if (!res.ok) { console.error("[saveCanvas] error:", json?.error); return null; }
-      return json;
-    } catch (err) {
-      console.error("[saveCanvas] fetch error:", err);
-      return null;
-    }
-  }
   function getNextTeammatePos() {
     const cols = 4;
     const colW = TM_NODE_W + 24;
@@ -770,7 +772,6 @@ export default function DashboardPage() {
     });
   }
 
-  const mgrPosSaveTimer = useRef(null);
   function setManagerPos(pos) {
     setManagerNode((prev) => {
       if (!prev) return prev;
@@ -782,7 +783,6 @@ export default function DashboardPage() {
     });
   }
 
-  const tmPosSaveTimers = useRef({});
   function setTeammatePos(id, pos) {
     setTeammates((prev) => prev.map((t) => t.id === id ? { ...t, pos } : t));
     clearTimeout(tmPosSaveTimers.current[id]);
