@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-const MGR_W = 500;
+const MGR_W =600;
 const MGR_MIN_W = 440;
 const MGR_MIN_H = 340;
 const MGR_HEADER_H = 42;
@@ -187,7 +187,7 @@ function TeammateContextMenu({ x, y, onAssign, onRename, onClose }) {
     <div ref={ref} className="fixed z-50 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50" style={{ left: x, top: y, minWidth: 160 }}>
       <button type="button" onClick={() => { onAssign(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">Assign</button>
       <div className="my-1 mx-2 border-t border-zinc-700" />
-      <button type="button" onClick={() => { onRename(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text.zinc-200 transition-colors hover:bg-zinc-700/80">Rename</button>
+      <button type="button" onClick={() => { onRename(); onClose(); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">Rename</button>
     </div>
   );
 }
