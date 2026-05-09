@@ -55,9 +55,13 @@ DONE DETECTION — If the teammate clearly indicates a task is complete, append 
 TASK_DONE
 {"title":"exact task title"}
 
-FEEDBACK DETECTION — If the teammate raises a concern or cannot complete something, append:
+FEEDBACK DETECTION — If the teammate raises ANY question, concern, request for clarification, or says they cannot complete something on time — you MUST append this marker. No exceptions. Do not just say "I'll pass it along" without appending the marker:
 TASK_FEEDBACK
-{"title":"exact task title","feedback":"brief summary of what they said"}`;
+{"title":"exact task title matching exactly from your task list","feedback":"brief summary of the question or concern"}
+
+The title must exactly match the task title from your list above. If unsure which task it relates to, use the most relevant one.```
+
+Push, test again with Satyen asking a question — check if feedback column gets populated in `manager_tasks`.
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
