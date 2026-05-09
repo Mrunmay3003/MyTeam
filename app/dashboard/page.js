@@ -296,7 +296,7 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
         {/* Chat panel — below header */}
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }} onWheel={(e) => e.stopPropagation()}>
+            <div ref={scrollRef} className="manager-chat-scroll overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
               {messages.length === 0 ? (
                 <p className="text-xs text-zinc-600 text-center pt-10">
                   Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
@@ -511,6 +511,7 @@ export default function DashboardPage() {
     function onWheel(e) {
       const el = canvasContainerRef.current;
       if (!el || !el.contains(e.target)) return;
+      if (e.target.closest(".manager-chat-scroll")) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
