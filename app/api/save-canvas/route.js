@@ -18,6 +18,16 @@ export async function POST(request) {
 
     const supabaseAdmin = getAdmin();
 
+    if (action === "save_message") {
+      const { chatId, role, content } = payload;
+      const { data, error } = await supabaseAdmin
+        .from("messages")
+        .insert({ chat_id: chatId, role, content })
+        .select("id, role, content, created_at")
+        .single();
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true, data });
+    }
     const { data: workspace, error: wsError } = await supabaseAdmin
       .from("workspaces")
       .select("id")
@@ -166,17 +176,6 @@ export async function POST(request) {
     if (error) return Response.json({ error: error.message }, { status: 500 });
     return Response.json({ ok: true });
   }
-
-  if (action === "save_message") {
-  const { chatId, role, content } = payload;
-  const { data, error } = await supabaseAdmin
-    .from("messages")
-    .insert({ chat_id: chatId, role, content })
-    .select("id, role, content, created_at")
-    .single();
-  if (error) return Response.json({ error: error.message }, { status: 500 });
-  return Response.json({ ok: true, data });
-}
 
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
