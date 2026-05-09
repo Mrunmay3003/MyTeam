@@ -866,9 +866,7 @@ export default function DashboardPage() {
   }, [onboardingBusy, onboardingChatId, onboardingMessages, runSilentBackgroundSummary, workspaceId]);
 
   async function handleSaveOrgCode(code) {
-    await supabase.from("workspaces")
-      .update({ org_code: code })
-      .eq("id", workspaceId);
+    await saveCanvas("save_org_code", { code });
     setOrgCodeSet(true);
   }
 
@@ -1147,7 +1145,9 @@ export default function DashboardPage() {
             </nav>
             <div className="border-t border-zinc-800 p-2">
               {sidebarOpen ? (
-                <button type="button" className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon className="shrink-0" />Settings</button>
+                <button type="button" onClick={() => setShowOrgCodeSetup(true)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
+                  <SettingsIcon className="shrink-0" />Settings
+                </button>
               ) : (
                 <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
               )}

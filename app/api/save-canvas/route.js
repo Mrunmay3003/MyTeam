@@ -146,6 +146,17 @@ export async function POST(request) {
       if (error) return Response.json({ error: error.message }, { status: 500 });
       return Response.json({ ok: true });
     }
+
+    if (action === "save_org_code") {
+  const { code } = payload;
+  const { error } = await supabaseAdmin
+    .from("workspaces")
+    .update({ org_code: code })
+    .eq("id", workspaceId);
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true });
+}
+
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
   } catch (err) {
