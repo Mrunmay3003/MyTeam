@@ -406,11 +406,11 @@ export default function TeammatePage() {
               {/* Canvas button */}
               <li>
                 {sidebarOpen ? (
-                  <button type="button" onClick={() => setCentreView(v => v === "canvas" ? "chat" : "canvas")} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
+                  <button type="button" onClick={() => setCentreView("canvas")} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
                     <CanvasIcon className="shrink-0" />Canvas
                   </button>
                 ) : (
-                  <button type="button" onClick={() => setCentreView(v => v === "canvas" ? "chat" : "canvas")} title="Canvas" className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full transition-colors ${centreView === "canvas" ? "bg-zinc-700 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}>
+                  <button type="button" onClick={() => setCentreView("canvas")} title="Canvas" className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full transition-colors ${centreView === "canvas" ? "bg-zinc-700 text-zinc-50" : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"}`}>
                     <CanvasIcon className="h-4 w-4" />
                   </button>
                 )}

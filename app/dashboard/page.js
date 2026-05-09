@@ -686,6 +686,15 @@ export default function DashboardPage() {
       if (cancelled) return;
       if (!session) { router.replace("/auth"); return; }
       setUserId(session.user.id);
+
+      // Redirect teammates away from dashboard
+      const { data: ws } = await supabase.from("workspaces")
+        .select("user_role").eq("owner_user_id", session.user.id).maybeSingle();
+      if (ws?.user_role === "teammate") {
+        router.replace("/teammate");
+        return;
+      }
+
       setAuthReady(true);
     })();
     return () => { cancelled = true; };
