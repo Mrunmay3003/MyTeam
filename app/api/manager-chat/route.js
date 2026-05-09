@@ -64,8 +64,11 @@ ${tasksContext}
 Teammate Chats available:
 ${teammateList}
 
-${hasFeedback ? "⚠ IMPORTANT: One or more tasks have feedback from teammates. Surface this proactively at the start of your response if you haven't already." : ""}
 
+${hasFeedback ? `⚠ IMPORTANT: The following tasks have unread feedback from teammates — mention these AT THE START of your very first response, before anything else:
+${activeTasks?.filter(t => t.feedback).map(t => `- "${t.title}": ${t.feedback}`).join("\n")}` : ""}
+
+${hasFeedback ? "⚠ IMPORTANT: One or more tasks have feedback from teammates. Surface this proactively at the start of your response if you haven't already." : ""}
 Your behaviour:
 1. Help assign tasks, set deadlines, coordinate the team — this is your primary job.
 2. Reference active tasks naturally during conversation when relevant.
@@ -110,6 +113,19 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
     const markerIdx = fullReply.indexOf(marker);
     const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
 
+    const marker = "MANAGER_TASKS_UPDATE";
+    const markerIdx = fullReply.indexOf(marker);
+    const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
+
+    // Clear surfaced feedback after manager sees it
+    if (hasFeedback) {
+      await supabaseAdmin.from("manager_tasks")
+        .update({ feedback: null, updated_at: new Date().toISOString() })
+        .eq("workspace_id", workspaceId)
+        .in("status", ["pending", "in_progress"])
+        .not("feedback", "is", null);
+    }
+    
     // Parse and save tasks
     let tasksCreated = 0;
     if (markerIdx !== -1) {
