@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const [myWorkspaceId, setMyWorkspaceId] = useState(null);
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function ChevronLeftIcon({ className }) {
   return <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>;
@@ -204,6 +206,25 @@ export default function TeammatePage() {
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages]);
 
+  async function loadAndEnterChat(wsId, chId) {
+    const res = await fetch("/api/get-workspace-data", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId, chatId: chId }),
+    });
+    const data = await res.json();
+    setChatName(data.chatName);
+    setOrgName(data.orgName);
+    setMessages(data.messages ?? []);
+    setBusinessMemory(data.businessMemory);
+
+    const mgr = data.chats.find(c => c.type === "manager");
+    if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
+    const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
+    setAllTeammates(tms);
+    setStep("chat");
+  }
+
   async function handleCodeSubmit(e) {
     e.preventDefault();
     const trimmed = orgCode.trim().toUpperCase();
@@ -241,24 +262,14 @@ export default function TeammatePage() {
     // Link user to chat
     await supabase.from("chats").update({ assigned_user_id: userId }).eq("id", chatId);
 
-    // Load messages
-    const { data: msgs } = await supabase.from("messages").select("id, role, content, created_at").eq("chat_id", chatId).order("created_at", { ascending: true });
-    setMessages(msgs ?? []);
-
-    // Load all teammates + manager for sidebar + canvas
-    const { data: chats } = await supabase.from("chats").select("id, type, name, pos_x, pos_y, node_w, node_h").eq("workspace_id", workspaceId).in("type", ["manager", "teammate"]);
-    if (chats) {
-      const mgr = chats.find(c => c.type === "manager");
-      if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
-      const tms = chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
-      setAllTeammates(tms);
+    // Save link to their own workspace so they skip code entry next time
+    if (myWorkspaceId) {
+      await supabase.from("workspaces")
+        .update({ linked_workspace_id: workspaceId, linked_chat_id: chatId })
+        .eq("id", myWorkspaceId);
     }
 
-    // Load business memory
-    const { data: biz } = await supabase.from("business_memory").select("content").eq("workspace_id", workspaceId).maybeSingle();
-    if (biz?.content) setBusinessMemory(biz.content);
-
-    setStep("chat");
+    await loadAndEnterChat(workspaceId, chatId);
   }
 
   async function handleSend() {
