@@ -195,6 +195,22 @@ export default function TeammatePage() {
       if (!session) { router.replace("/auth"); return; }
       setUserId(session.user.id);
       setUserEmail(session.user.email);
+      const { data: ws, error: wsErr } = await supabase
+        .from("workspaces")
+        .select("id, linked_workspace_id, linked_chat_id, owner_user_id, user_id")
+        .or(`owner_user_id.eq.${session.user.id},user_id.eq.${session.user.id}`)
+        .maybeSingle();
+      console.log("startup workspace check:", ws, wsErr);
+
+      setMyWorkspaceId(ws?.id ?? null);
+
+      if (ws?.linked_workspace_id && ws?.linked_chat_id) {
+        setWorkspaceId(ws.linked_workspace_id);
+        setChatId(ws.linked_chat_id);
+        await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id);
+      } else {
+        setStep("enter_code");
+      }
       setStep("enter_code");
     })();
   }, [router]);
