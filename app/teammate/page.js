@@ -211,7 +211,6 @@ export default function TeammatePage() {
       } else {
         setStep("enter_code");
       }
-      setStep("enter_code");
     })();
   }, [router]);
 
