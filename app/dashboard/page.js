@@ -216,7 +216,6 @@ function ConnectionLines({ managerNode, teammates }) {
   );
 }
 
-// ── Draggable + Resizable Manager Node ────────────────────────────────────────
 function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onSizeChange, onContextMenu, messages, inputValue, onInputChange, onSend, busy, scrollRef }) {
   const dragging = useRef(false);
   const resizing = useRef(null);
@@ -250,10 +249,7 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
       if (!resizing.current) return;
       const dx = (e.clientX - start.current.mx) / canvasScale;
       const dy = (e.clientY - start.current.my) / canvasScale;
-      let newW = start.current.w;
-      let newH = start.current.h;
-      let newX = start.current.px;
-      let newY = start.current.py;
+      let newW = start.current.w, newH = start.current.h, newX = start.current.px, newY = start.current.py;
       const dir = resizing.current;
       if (dir.includes("e")) newW = Math.max(MGR_MIN_W, start.current.w + dx);
       if (dir.includes("s")) newH = Math.max(MGR_MIN_H, start.current.h + dy);
@@ -266,14 +262,38 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
     document.addEventListener("mouseup", onUp);
   }
 
-  const handleStyle = (cursor, style) => ({
-    position: "absolute", ...style, cursor, zIndex: 20,
-  });
+  const handleStyle = (cursor, style) => ({ position: "absolute", ...style, cursor, zIndex: 20 });
 
   return (
     <div style={{ position: "absolute", left: node.pos.x, top: node.pos.y, width: nodeW, zIndex: 10 }} onContextMenu={onContextMenu}>
       <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-2xl shadow-black/60" style={{ position: "relative" }}>
-        {/* Resize handles — only show when chat is open */}
+
+        {/* Resize handles — only when chat is open */}
+        {node.chatOpen && (<>
+          <div onMouseDown={(e) => onResizeMouseDown(e, "e")} style={handleStyle("ew-resize", { right: -4, top: 8, bottom: 8, width: 8 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "w")} style={handleStyle("ew-resize", { left: -4, top: 8, bottom: 8, width: 8 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "s")} style={handleStyle("ns-resize", { bottom: -4, left: 8, right: 8, height: 8 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "se")} style={handleStyle("nwse-resize", { bottom: -4, right: -4, width: 12, height: 12 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "sw")} style={handleStyle("nesw-resize", { bottom: -4, left: -4, width: 12, height: 12 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "ne")} style={handleStyle("nesw-resize", { top: -4, right: -4, width: 12, height: 12 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "nw")} style={handleStyle("nwse-resize", { top: -4, left: -4, width: 12, height: 12 })} />
+          <div onMouseDown={(e) => onResizeMouseDown(e, "n")} style={handleStyle("ns-resize", { top: -4, left: 8, right: 8, height: 8 })} />
+        </>)}
+
+        {/* Header — always on top */}
+        <div
+          className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
+          style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
+          onMouseDown={onHeaderMouseDown}
+          onDoubleClick={onToggleChat}
+        >
+          <span className="truncate text-sm font-bold text-zinc-100">{node.name}</span>
+          <button type="button" onClick={onToggleChat} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}>
+            <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+
+        {/* Chat panel — below header */}
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
             <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
@@ -314,57 +334,6 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
           </div>
         )}
 
-                <div
-                  className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
-                  style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
-                  onMouseDown={onHeaderMouseDown}
-                  onDoubleClick={onToggleChat}
-                >
-                  <span className="truncate text-sm font-bold text-zinc-100">{node.name}</span>
-                  <button type="button" onClick={onToggleChat} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}>
-                    <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
-                  </button>
-                </div>
-
-                {node.chatOpen && (
-          <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
-              {messages.length === 0 ? (
-                <p className="text-xs text-zinc-600 text-center pt-10">
-                  Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
-                </p>
-              ) : messages.map((m, i) => {
-                const isUser = m.role === "user";
-                return (
-                  <div key={m.id ?? i} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`}>
-                    {m.content}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="border-t border-zinc-800 p-3" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={inputValue}
-                  onChange={e => onInputChange(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter" && !busy && inputValue.trim()) { e.preventDefault(); onSend(inputValue); } }}
-                  placeholder={`Message ${node.name}…`}
-                  disabled={busy}
-                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 disabled:opacity-50"
-                />
-                <button
-                  type="button"
-                  onClick={() => { if (!busy && inputValue.trim()) onSend(inputValue); }}
-                  disabled={busy || !inputValue.trim()}
-                  className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Send
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
