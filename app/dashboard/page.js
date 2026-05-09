@@ -508,9 +508,9 @@ export default function DashboardPage() {
   useEffect(() => { canvasOffsetRef.current = canvasOffset; }, [canvasOffset]);
 
   useEffect(() => {
-    const el = canvasContainerRef.current;
-    if (!el) return;
     function onWheel(e) {
+      const el = canvasContainerRef.current;
+      if (!el || !el.contains(e.target)) return;
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -526,9 +526,9 @@ export default function DashboardPage() {
       setCanvasOffset(newOffset);
       saveViewport(newOffset, newScale);
     }
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [centreView]);
+    document.addEventListener("wheel", onWheel, { passive: false });
+    return () => document.removeEventListener("wheel", onWheel);
+  }, []);
 
   function handleCanvasMouseDown(e) {
     if (e.button !== 1) return;
