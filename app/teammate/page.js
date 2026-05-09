@@ -260,10 +260,25 @@ export default function TeammatePage() {
     await supabase.from("chats").update({ assigned_user_id: userId }).eq("id", chatId);
 
     // Save link to their own workspace so they skip code entry next time
-    if (myWorkspaceId) {
+    // Find or create teammate's own workspace to save the link
+    let wsId = myWorkspaceId;
+    if (!wsId) {
+      const { data: existing } = await supabase.from("workspaces")
+        .select("id").eq("owner_user_id", userId).maybeSingle();
+      if (existing) {
+        wsId = existing.id;
+      } else {
+        const { data: created } = await supabase.from("workspaces")
+          .insert({ owner_user_id: userId, name: "Teammate Workspace", user_role: "teammate", seen_onboarding: true })
+          .select("id").single();
+        wsId = created?.id ?? null;
+      }
+      setMyWorkspaceId(wsId);
+    }
+    if (wsId) {
       await supabase.from("workspaces")
         .update({ linked_workspace_id: workspaceId, linked_chat_id: chatId })
-        .eq("id", myWorkspaceId);
+        .eq("id", wsId);
     }
 
     await loadAndEnterChat(workspaceId, chatId);
