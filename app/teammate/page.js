@@ -161,6 +161,7 @@ export default function TeammatePage() {
 
   const [step, setStep] = useState("loading");
   const [userId, setUserId] = useState(null);
+  const [myWorkspaceId, setMyWorkspaceId] = useState(null);
   const [userEmail, setUserEmail] = useState(null);
 
   // Code entry
