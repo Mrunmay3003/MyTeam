@@ -256,32 +256,41 @@ export default function TeammatePage() {
   }
 
   async function handleAccept() {
-    // Link user to chat
-    await supabase.from("chats").update({ assigned_user_id: userId }).eq("id", chatId);
+    console.log("handleAccept called", { userId, chatId, workspaceId, myWorkspaceId });
+    try {
+      await supabase.from("chats").update({ assigned_user_id: userId }).eq("id", chatId);
+      console.log("chat linked");
 
-    // Save link to their own workspace so they skip code entry next time
-    // Find or create teammate's own workspace to save the link
-    let wsId = myWorkspaceId;
-    if (!wsId) {
-      const { data: existing } = await supabase.from("workspaces")
-        .select("id").eq("owner_user_id", userId).maybeSingle();
-      if (existing) {
-        wsId = existing.id;
-      } else {
-        const { data: created } = await supabase.from("workspaces")
-          .insert({ owner_user_id: userId, name: "Teammate Workspace", user_role: "teammate", seen_onboarding: true })
-          .select("id").single();
-        wsId = created?.id ?? null;
+      let wsId = myWorkspaceId;
+      if (!wsId) {
+        const { data: existing } = await supabase.from("workspaces")
+          .select("id").eq("owner_user_id", userId).maybeSingle();
+        console.log("existing workspace", existing);
+        if (existing) {
+          wsId = existing.id;
+        } else {
+          const { data: created } = await supabase.from("workspaces")
+            .insert({ owner_user_id: userId, name: "Teammate Workspace", user_role: "teammate", seen_onboarding: true })
+            .select("id").single();
+          console.log("created workspace", created);
+          wsId = created?.id ?? null;
+        }
+        setMyWorkspaceId(wsId);
       }
-      setMyWorkspaceId(wsId);
-    }
-    if (wsId) {
-      await supabase.from("workspaces")
-        .update({ linked_workspace_id: workspaceId, linked_chat_id: chatId })
-        .eq("id", wsId);
-    }
 
-    await loadAndEnterChat(workspaceId, chatId);
+      if (wsId) {
+        const { error: linkErr } = await supabase.from("workspaces")
+          .update({ linked_workspace_id: workspaceId, linked_chat_id: chatId })
+          .eq("id", wsId);
+        console.log("link saved", linkErr);
+      }
+
+      console.log("calling loadAndEnterChat", workspaceId, chatId);
+      await loadAndEnterChat(workspaceId, chatId);
+      console.log("done");
+    } catch (err) {
+      console.error("handleAccept error:", err);
+    }
   }
 
   async function handleSend() {
