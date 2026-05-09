@@ -23,7 +23,16 @@ export default function AuthPage() {
       } = await supabase.auth.getSession();
       if (cancelled) return;
       if (session) {
-        router.replace("/dashboard");
+        const { data: ws } = await supabase
+          .from("workspaces")
+          .select("user_role")
+          .eq("owner_user_id", session.user.id)
+          .maybeSingle();
+        if (ws?.user_role === "teammate") {
+          router.replace("/teammate");
+        } else {
+          router.replace("/dashboard");
+        }
         router.refresh();
       }
     })();
@@ -41,6 +50,22 @@ export default function AuthPage() {
       msg.includes("exists") ||
       msg.includes("user already")
     );
+  }
+
+  async function redirectAfterAuth() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    const { data: ws } = await supabase
+      .from("workspaces")
+      .select("user_role")
+      .eq("owner_user_id", session.user.id)
+      .maybeSingle();
+    if (ws?.user_role === "teammate") {
+      router.push("/teammate");
+    } else {
+      router.push("/dashboard");
+    }
+    router.refresh();
   }
 
   async function handleSubmit(e) {
@@ -95,8 +120,7 @@ export default function AuthPage() {
           setError(signInError.message);
           return;
         }
-        router.push("/dashboard");
-        router.refresh();
+        await redirectAfterAuth();
       }
     } finally {
       setLoading(false);
