@@ -528,7 +528,7 @@ export default function DashboardPage() {
     }
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [centreView]);
 
   function handleCanvasMouseDown(e) {
     if (e.button !== 1) return;
