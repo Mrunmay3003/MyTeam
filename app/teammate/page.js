@@ -392,8 +392,8 @@ export default function TeammatePage() {
               {/* My chat — highlighted */}
               <li>
                 {sidebarOpen ? (
-                  <button type="button" onClick={() => setCentreView("chat")} className={`w-full rounded-lg px-3 py-2.5 text-left text-sm truncate block transition-colors ${centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}>
-                    {chatName} <span className="text-[10px] text-zinc-600 ml-1">you</span>
+                  <button type="button" onClick={() => setCentreView("chat")} className={`w-full rounded-lg px-3 py-2.5 text-left truncate block transition-colors ${centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}>
+                    <span className="text-base font-bold">{chatName}</span> <span className="text-[10px] text-zinc-600 ml-1">you</span>
                   </button>
                 ) : (
                   <button type="button" onClick={() => setCentreView("chat")} title={chatName} className={`flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold transition-colors ${centreView === "chat" ? "bg-zinc-600 text-zinc-50" : "bg-zinc-700 text-zinc-300"}`}>
@@ -406,7 +406,7 @@ export default function TeammatePage() {
               {allTeammates.filter(t => t.id !== chatId).map(tm => (
                 <li key={tm.id}>
                   {sidebarOpen ? (
-                    <div className="w-full rounded-lg px-3 py-2.5 text-left text-sm truncate text-zinc-600 cursor-default">{tm.name}</div>
+                    <button type="button" className="w-full rounded-lg px-3 py-2.5 text-left text-sm truncate text-zinc-600 hover:bg-zinc-800/30 transition-colors cursor-default">{tm.name}</button>
                   ) : (
                     <div title={tm.name} className="flex h-8 w-8 mx-auto items-center justify-center rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-700 cursor-default">{getInitials(tm.name)}</div>
                   )}
