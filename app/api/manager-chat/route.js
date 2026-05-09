@@ -1,0 +1,168 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { createClient } from "@supabase/supabase-js";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+function getISTTime() {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  }).format(new Date());
+}
+
+export async function POST(req) {
+  try {
+    const { messages, workspaceId, teammates = [] } = await req.json();
+    if (!workspaceId) return NextResponse.json({ error: "workspaceId required" }, { status: 400 });
+
+    // Fetch business memory
+    const { data: bizMem } = await supabaseAdmin
+      .from("business_memory").select("content").eq("workspace_id", workspaceId).maybeSingle();
+    const businessContext = bizMem?.content
+      ? JSON.stringify(bizMem.content, null, 2)
+      : "No business context saved yet. Encourage the manager to fill in the Business Context chat first.";
+
+    // Fetch active tasks
+    const { data: activeTasks } = await supabaseAdmin
+      .from("manager_tasks").select("title, description, task_type, assignee_ids, deadline_ist, priority, status, feedback")
+      .eq("workspace_id", workspaceId).in("status", ["pending", "in_progress"]).order("priority", { ascending: true });
+
+    const tasksContext = activeTasks?.length > 0
+      ? activeTasks.map((t, i) => {
+          const assigneeName = t.assignee_ids?.length
+            ? (teammates.find(tm => tm.id === t.assignee_ids[0])?.name ?? "Unknown")
+            : "All teammates";
+          const deadline = t.deadline_ist
+            ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(t.deadline_ist))
+            : "No deadline";
+          const fb = t.feedback ? ` ⚠ Teammate feedback: "${t.feedback}"` : "";
+          return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — ${assigneeName} — Due: ${deadline} — Priority: ${t.priority}${fb}`;
+        }).join("\n")
+      : "No active tasks.";
+
+    const teammateList = teammates.length > 0
+      ? teammates.map(t => `- ${t.name}${t.assignedEmail ? ` (${t.assignedEmail})` : ""}`).join("\n")
+      : "No teammates added yet.";
+
+    // Check for pending feedback to surface
+    const hasFeedback = activeTasks?.some(t => t.feedback);
+
+    const systemPrompt = `You are the Manager Chat AI for MyTeam — a direct, intelligent async team coordination assistant.
+
+Current IST time: ${getISTTime()}
+
+Business Context (from Business Chat memory):
+${businessContext}
+
+Active Tasks:
+${tasksContext}
+
+Teammate Chats available:
+${teammateList}
+
+${hasFeedback ? "⚠ IMPORTANT: One or more tasks have feedback from teammates. Surface this proactively at the start of your response if you haven't already." : ""}
+
+Your behaviour:
+1. Help assign tasks, set deadlines, coordinate the team — this is your primary job.
+2. Reference active tasks naturally during conversation when relevant.
+3. If the manager discusses strategy, long-term plans, new projects, or timeline decisions → briefly engage then say: "That's a planning-level call — bring it up in Business Context so it gets saved. I'll reference it from there once it's stored."
+4. If a teammate name is mentioned that does not closely match anyone in the list → flag it clearly.
+5. Understand IST time in both 12hr and 24hr format. "Tomorrow noon" = tomorrow 12:00 IST. "Friday EOD" = Friday 23:59 IST. "This weekend" = upcoming Saturday/Sunday IST.
+6. When the manager assigns tasks, carefully identify each distinct task, who it is for, the deadline, the priority, and what the opening message to the teammate should say.
+7. Keep responses concise and direct. Do not over-explain.
+
+TASK OUTPUT — When creating tasks, append this EXACTLY after your natural reply (nothing between reply and this block):
+MANAGER_TASKS_UPDATE
+[{"title":"short label","description":"full details with context, what to do, how, priority notes","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line AI sends to teammate or reminder text for manager"}]
+
+task_type values:
+- teammate_task: one specific person
+- broadcast_task: all teammates (assignee_name: null)
+- ai_reminder: remind the manager at a specific IST time (assignee_name: null)
+- levitated: manager handles personally — AI tracks but does not act
+
+Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for general conversation.`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system: systemPrompt,
+      messages: messages.slice(-6),
+    });
+
+    const fullReply = response.content?.[0]?.text ?? "";
+
+    // Split reply from task JSON
+    const marker = "MANAGER_TASKS_UPDATE";
+    const markerIdx = fullReply.indexOf(marker);
+    const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
+
+    // Parse and save tasks
+    let tasksCreated = 0;
+    if (markerIdx !== -1) {
+      try {
+        const raw = fullReply.slice(markerIdx + marker.length).trim();
+        const s = raw.indexOf("["); const e = raw.lastIndexOf("]");
+        if (s !== -1 && e !== -1) {
+          const taskArray = JSON.parse(raw.slice(s, e + 1));
+          for (const task of taskArray) {
+            let assigneeIds = null;
+            if (task.assignee_name && task.task_type === "teammate_task") {
+              const match = teammates.find(t => t.name.toLowerCase() === task.assignee_name.toLowerCase());
+              if (match) assigneeIds = [match.id];
+            }
+
+            const { data: inserted, error: insertErr } = await supabaseAdmin
+              .from("manager_tasks")
+              .insert({
+                workspace_id: workspaceId,
+                title: task.title,
+                description: task.description,
+                task_type: task.task_type,
+                assignee_ids: assigneeIds,
+                deadline_ist: task.deadline_ist ?? null,
+                priority: task.priority ?? 3,
+                status: "pending",
+                source_context: businessContext.slice(0, 500),
+              })
+              .select("id").single();
+
+            if (insertErr) { console.error("Task insert error:", insertErr); continue; }
+            tasksCreated++;
+
+            // Schedule prompt if deadline + message present
+            if (task.deadline_ist && task.scheduled_message) {
+              const targets =
+                task.task_type === "broadcast_task" ? teammates.map(t => ({ target_type: "teammate", target_id: t.id })) :
+                task.task_type === "ai_reminder" ? [{ target_type: "manager", target_id: null }] :
+                (assigneeIds ?? []).map(id => ({ target_type: "teammate", target_id: id }));
+
+              for (const target of targets) {
+                await supabaseAdmin.from("scheduled_prompts").insert({
+                  workspace_id: workspaceId,
+                  task_id: inserted.id,
+                  target_type: target.target_type,
+                  target_id: target.target_id,
+                  message_draft: task.scheduled_message,
+                  send_at_ist: task.deadline_ist,
+                  sent: false,
+                });
+              }
+            }
+          }
+        }
+      } catch (parseErr) { console.error("Task parse error:", parseErr); }
+    }
+
+    return NextResponse.json({ reply: visibleReply, tasksCreated });
+  } catch (err) {
+    console.error("manager-chat error:", err);
+    return NextResponse.json({ error: err.message ?? "Internal error" }, { status: 500 });
+  }
+}

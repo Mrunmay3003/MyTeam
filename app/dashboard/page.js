@@ -217,7 +217,7 @@ function ConnectionLines({ managerNode, teammates }) {
 }
 
 // ── Draggable + Resizable Manager Node ────────────────────────────────────────
-function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onSizeChange, onContextMenu }) {
+function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onSizeChange, onContextMenu, messages, inputValue, onInputChange, onSend, busy, scrollRef }) {
   const dragging = useRef(false);
   const resizing = useRef(null);
   const start = useRef({});
@@ -274,38 +274,93 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
     <div style={{ position: "absolute", left: node.pos.x, top: node.pos.y, width: nodeW, zIndex: 10 }} onContextMenu={onContextMenu}>
       <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-2xl shadow-black/60" style={{ position: "relative" }}>
         {/* Resize handles — only show when chat is open */}
-        {node.chatOpen && (<>
-          <div onMouseDown={(e) => onResizeMouseDown(e, "e")} style={handleStyle("ew-resize", { right: -4, top: 8, bottom: 8, width: 8 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "w")} style={handleStyle("ew-resize", { left: -4, top: 8, bottom: 8, width: 8 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "s")} style={handleStyle("ns-resize", { bottom: -4, left: 8, right: 8, height: 8 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "se")} style={handleStyle("nwse-resize", { bottom: -4, right: -4, width: 12, height: 12 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "sw")} style={handleStyle("nesw-resize", { bottom: -4, left: -4, width: 12, height: 12 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "ne")} style={handleStyle("nesw-resize", { top: -4, right: -4, width: 12, height: 12 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "nw")} style={handleStyle("nwse-resize", { top: -4, left: -4, width: 12, height: 12 })} />
-          <div onMouseDown={(e) => onResizeMouseDown(e, "n")} style={handleStyle("ns-resize", { top: -4, left: 8, right: 8, height: 8 })} />
-        </>)}
-
-        <div
-          className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
-          style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
-          onMouseDown={onHeaderMouseDown}
-          onDoubleClick={onToggleChat}
-        >
-          <span className="truncate text-sm font-bold text-zinc-100">{node.name}</span>
-          <button type="button" onClick={onToggleChat} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}>
-            <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
-          </button>
-        </div>
-
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
-              <p className="text-xs text-zinc-600 text-center pt-10">Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.</p>
+            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
+              {messages.length === 0 ? (
+                <p className="text-xs text-zinc-600 text-center pt-10">
+                  Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
+                </p>
+              ) : messages.map((m, i) => {
+                const isUser = m.role === "user";
+                return (
+                  <div key={m.id ?? i} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`}>
+                    {m.content}
+                  </div>
+                );
+              })}
             </div>
             <div className="border-t border-zinc-800 p-3" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
               <div className="flex gap-2">
-                <input type="text" placeholder={`Message ${node.name}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600" />
-                <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-3 py-2 text-xs font-medium text-zinc-300 opacity-50">Send</button>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={e => onInputChange(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !busy && inputValue.trim()) { e.preventDefault(); onSend(inputValue); } }}
+                  placeholder={`Message ${node.name}…`}
+                  disabled={busy}
+                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => { if (!busy && inputValue.trim()) onSend(inputValue); }}
+                  disabled={busy || !inputValue.trim()}
+                  className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+                <div
+                  className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
+                  style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
+                  onMouseDown={onHeaderMouseDown}
+                  onDoubleClick={onToggleChat}
+                >
+                  <span className="truncate text-sm font-bold text-zinc-100">{node.name}</span>
+                  <button type="button" onClick={onToggleChat} className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${node.chatOpen ? "bg-zinc-700 text-zinc-200" : "text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"}`}>
+                    <ChevronDownIcon className={`transition-transform duration-200 ${node.chatOpen ? "rotate-180" : ""}`} />
+                  </button>
+                </div>
+
+                {node.chatOpen && (
+          <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
+            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
+              {messages.length === 0 ? (
+                <p className="text-xs text-zinc-600 text-center pt-10">
+                  Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
+                </p>
+              ) : messages.map((m, i) => {
+                const isUser = m.role === "user";
+                return (
+                  <div key={m.id ?? i} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-xs leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`}>
+                    {m.content}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border-t border-zinc-800 p-3" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={e => onInputChange(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter" && !busy && inputValue.trim()) { e.preventDefault(); onSend(inputValue); } }}
+                  placeholder={`Message ${node.name}…`}
+                  disabled={busy}
+                  className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => { if (!busy && inputValue.trim()) onSend(inputValue); }}
+                  disabled={busy || !inputValue.trim()}
+                  className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
               </div>
             </div>
           </div>
@@ -398,6 +453,12 @@ export default function DashboardPage() {
   const tmPosSaveTimers = useRef({});
   const viewportSaveTimer = useRef(null);
   const mgrSizeSaveTimer = useRef(null);
+
+  // Manager chat state
+  const [managerMessages, setManagerMessages] = useState([]);
+  const [managerInput, setManagerInput] = useState("");
+  const [managerBusy, setManagerBusy] = useState(false);
+  const managerScrollRef = useRef(null);
 
   async function saveCanvas(action, payload) {
     if (!workspaceId || !userId) return null;
@@ -534,6 +595,7 @@ export default function DashboardPage() {
       if (cancelled) return;
       setWorkspaceId(workspace.id);
       await loadCanvasNodes(workspace.id);
+      // Manager messages load happens in a separate useEffect watching managerNode
       await loadViewport(workspace.id);
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
@@ -554,6 +616,17 @@ export default function DashboardPage() {
     if (!contextScrollRef.current) return;
     contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight;
   }, [onboardingMessages, contextOpen]);
+  useEffect(() => {
+    if (!managerNode?.id) return;
+    supabase.from("messages").select("id, role, content, created_at")
+      .eq("chat_id", managerNode.id).order("created_at", { ascending: true })
+      .then(({ data }) => { if (data) setManagerMessages(data); });
+  }, [managerNode?.id]);
+
+  useEffect(() => {
+    if (!managerScrollRef.current) return;
+    managerScrollRef.current.scrollTop = managerScrollRef.current.scrollHeight;
+  }, [managerMessages]);
 
   const onboardingUserMessageCount = useMemo(
     () => onboardingMessages.filter((m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW").length,
@@ -706,6 +779,36 @@ export default function DashboardPage() {
   }
 
   async function handleOnboardingSubmit(e) { e.preventDefault(); await submitOnboardingMessage(onboardingInput); }
+  const handleManagerSend = useCallback(async (content) => {
+    if (!managerNode?.id || !workspaceId || managerBusy) return;
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    setManagerBusy(true);
+
+    const ins = await supabase.from("messages")
+      .insert({ chat_id: managerNode.id, role: "user", content: trimmed })
+      .select("id, role, content, created_at").single();
+    if (ins.error) { setManagerBusy(false); return; }
+
+    const nextMessages = [...managerMessages, ins.data];
+    setManagerMessages(nextMessages);
+    setManagerInput("");
+
+    const apiMessages = nextMessages.map(m => ({ role: m.role, content: m.content }));
+    const res = await fetch("/api/manager-chat", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: apiMessages, workspaceId, teammates }),
+    });
+    const payload = await res.json();
+    const replyText = payload.reply || "Something went wrong.";
+
+    const asstIns = await supabase.from("messages")
+      .insert({ chat_id: managerNode.id, role: "assistant", content: replyText })
+      .select("id, role, content, created_at").single();
+    if (!asstIns.error) setManagerMessages(prev => [...prev, asstIns.data]);
+
+    setManagerBusy(false);
+  }, [managerNode, workspaceId, managerBusy, managerMessages, teammates]);
 
   function getNextTeammatePos() {
     const cols = 4;
@@ -928,12 +1031,18 @@ export default function DashboardPage() {
                   <ConnectionLines managerNode={managerNode} teammates={teammates} />
                   {managerNode && (
                     <DraggableManagerNode
-                      node={managerNode}
-                      canvasScale={canvasScale}
-                      onToggleChat={toggleManagerChat}
-                      onPosChange={setManagerPos}
-                      onSizeChange={setManagerSize}
-                      onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMgrCtxMenu({ x: e.clientX, y: e.clientY }); }}
+                    node={managerNode}
+                    canvasScale={canvasScale}
+                    onToggleChat={toggleManagerChat}
+                    onPosChange={setManagerPos}
+                    onSizeChange={setManagerSize}
+                    onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); setMgrCtxMenu({ x: e.clientX, y: e.clientY }); }}
+                    messages={managerMessages}
+                    inputValue={managerInput}
+                    onInputChange={setManagerInput}
+                    onSend={handleManagerSend}
+                    busy={managerBusy}
+                    scrollRef={managerScrollRef}
                     />
                   )}
                   {teammates.map((tm) => (
