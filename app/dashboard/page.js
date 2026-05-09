@@ -296,7 +296,7 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
         {/* Chat panel — below header */}
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
+            <div ref={scrollRef} className="overflow-y-auto p-3 space-y-2" style={{ height: nodeH }} onWheel={(e) => e.stopPropagation()}>
               {messages.length === 0 ? (
                 <p className="text-xs text-zinc-600 text-center pt-10">
                   Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
@@ -373,6 +373,35 @@ function DraggableTeammateNode({ node, canvasScale, onPosChange, onDoubleClick, 
   );
 }
 
+function RoleSelectPopup({ onSelect }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+      <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-8 shadow-2xl shadow-black/70">
+        <h2 className="mb-2 text-center text-lg font-bold text-zinc-100">Welcome to MyTeam</h2>
+        <p className="mb-8 text-center text-sm text-zinc-500">How are you joining?</p>
+        <div className="flex flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => onSelect("manager")}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-5 text-left transition-colors hover:border-zinc-500 hover:bg-zinc-700"
+          >
+            <p className="text-sm font-semibold text-zinc-100">Manager Workspace</p>
+            <p className="mt-1 text-xs text-zinc-500">Create and manage your team, assign tasks, coordinate work.</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => onSelect("teammate")}
+            className="w-full rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-5 text-left transition-colors hover:border-zinc-500 hover:bg-zinc-700"
+          >
+            <p className="text-sm font-semibold text-zinc-100">Teammate Workspace</p>
+            <p className="mt-1 text-xs text-zinc-500">Join your team, view your tasks, chat with your AI assistant.</p>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -413,6 +442,8 @@ export default function DashboardPage() {
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
 
+  const canvasScaleRef = useRef(1);
+  const canvasOffsetRef = useRef({ x: 0, y: 0 });
   const menuRef = useRef(null);
   const autoSummaryTriggeredRef = useRef(false);
   const businessProfileSaveCompleteRef = useRef(false);
@@ -428,6 +459,10 @@ export default function DashboardPage() {
   const [managerInput, setManagerInput] = useState("");
   const [managerBusy, setManagerBusy] = useState(false);
   const managerScrollRef = useRef(null);
+
+  //login pop-up states
+  const [showRolePopup, setShowRolePopup] = useState(false);
+  const [roleSelected, setRoleSelected] = useState(false);
 
   async function saveCanvas(action, payload) {
     if (!workspaceId || !userId) return null;
@@ -469,6 +504,32 @@ export default function DashboardPage() {
     canvasInitializedRef.current = true;
   }, [centreView]);
 
+  useEffect(() => { canvasScaleRef.current = canvasScale; }, [canvasScale]);
+  useEffect(() => { canvasOffsetRef.current = canvasOffset; }, [canvasOffset]);
+
+  useEffect(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    function onWheel(e) {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      const newScale = Math.min(3, Math.max(0.15, canvasScaleRef.current * factor));
+      const ratio = newScale / canvasScaleRef.current;
+      const newOffset = {
+        x: mouseX - (mouseX - canvasOffsetRef.current.x) * ratio,
+        y: mouseY - (mouseY - canvasOffsetRef.current.y) * ratio,
+      };
+      setCanvasScale(newScale);
+      setCanvasOffset(newOffset);
+      saveViewport(newOffset, newScale);
+    }
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   function handleCanvasMouseDown(e) {
     if (e.button !== 1) return;
     e.preventDefault();
@@ -483,21 +544,6 @@ export default function DashboardPage() {
     function onMouseUp() { isPanningRef.current = false; document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); }
     document.addEventListener("mousemove", onMouseMove);
     document.addEventListener("mouseup", onMouseUp);
-  }
-
-  function handleCanvasWheel(e) {
-    e.preventDefault();
-    const rect = canvasContainerRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const factor = e.deltaY < 0 ? 1.1 : 0.9;
-    const newScale = Math.min(3, Math.max(0.15, canvasScale * factor));
-    const ratio = newScale / canvasScale;
-    const newOffset = { x: mouseX - (mouseX - canvasOffset.x) * ratio, y: mouseY - (mouseY - canvasOffset.y) * ratio };
-    setCanvasScale(newScale);
-    setCanvasOffset(newOffset);
-    saveViewport(newOffset, newScale);
   }
 
   function resetViewToManager() {
@@ -563,6 +609,15 @@ export default function DashboardPage() {
       if (!workspace) throw new Error("Unable to load workspace.");
       if (cancelled) return;
       setWorkspaceId(workspace.id);
+      const { data: ws } = await supabase
+      .from("workspaces")
+      .select("seen_onboarding, user_role")
+      .eq("id", workspace.id)
+     .single();
+
+      if (ws && !ws.seen_onboarding) {
+        setShowRolePopup(true);
+      }
       await loadCanvasNodes(workspace.id);
       // Manager messages load happens in a separate useEffect watching managerNode
       await loadViewport(workspace.id);
@@ -808,6 +863,24 @@ export default function DashboardPage() {
     setManagerNode({ id, name, chatOpen: false, pos, nodeW: MGR_W, nodeH: MGR_MIN_H });
   }
 
+  async function handleRoleSelect(role) {
+  setShowRolePopup(false);
+  setRoleSelected(true);
+  await fetch("/api/save-canvas", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "set_role",
+      workspaceId,
+      userId,
+      payload: { role },
+    }),
+  });
+  if (role === "teammate") {
+    router.replace("/teammate");
+  }
+}
+
   function toggleManagerChat() {
     setManagerNode((prev) => {
       if (!prev) return prev;
@@ -878,7 +951,8 @@ export default function DashboardPage() {
   if (!authReady) return null;
 
   return (
-    <>
+      <>
+      {showRolePopup && <RoleSelectPopup onSelect={handleRoleSelect} />}
       <style>{`
         * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
         *::-webkit-scrollbar { width: 3px; height: 3px; }
@@ -994,7 +1068,7 @@ export default function DashboardPage() {
 
           <main className="flex min-w-0 flex-1 flex-col bg-zinc-900 overflow-hidden">
             {centreView === "canvas" ? (
-              <div ref={canvasContainerRef} className="relative flex-1 overflow-hidden select-none" onMouseDown={handleCanvasMouseDown} onWheel={handleCanvasWheel} onContextMenu={(e) => e.preventDefault()}>
+              <div ref={canvasContainerRef} className="relative flex-1 overflow-hidden select-none" onMouseDown={handleCanvasMouseDown} onContextMenu={(e) => e.preventDefault()}>
                 <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle, #3f3f46 1px, transparent 1px)", backgroundSize: `${28 * canvasScale}px ${28 * canvasScale}px`, backgroundPosition: `${canvasOffset.x}px ${canvasOffset.y}px`, opacity: 0.5 }} />
                 <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", transformOrigin: "0 0", transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})` }}>
                   <ConnectionLines managerNode={managerNode} teammates={teammates} />

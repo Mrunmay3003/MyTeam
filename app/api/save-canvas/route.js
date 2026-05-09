@@ -137,6 +137,15 @@ export async function POST(request) {
       return Response.json({ ok: true });
     }
 
+    if (action === "set_role") {
+      const { role } = payload;
+      const { error } = await supabaseAdmin
+        .from("workspaces")
+        .update({ seen_onboarding: true, user_role: role })
+        .eq("id", workspaceId);
+      if (error) return Response.json({ error: error.message }, { status: 500 });
+      return Response.json({ ok: true });
+    }
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
   } catch (err) {
