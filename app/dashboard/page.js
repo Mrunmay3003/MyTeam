@@ -44,19 +44,27 @@ function FocusIcon({ className }) {
 }
 
 // ── New Chat Modal ─────────────────────────────────────────────────────────────
-function NewChatModal({ title, placeholder = "Member or role name…", onClose, onCreate, existingNames = [] }) {
+function NewChatModal({ title, onClose, onCreate, existingNames = [], requireEmail = false }) {
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
   function handleSubmit(e) {
     e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    if (existingNames.some((n) => n.toLowerCase() === trimmed.toLowerCase())) { setError(`"${trimmed}" already exists.`); return; }
-    onCreate(trimmed);
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    if (!trimmedName) return;
+    if (requireEmail && !trimmedEmail) { setError("Email is required."); return; }
+    if (requireEmail && !isValidEmail(trimmedEmail)) { setError("Enter a valid email address."); return; }
+    if (existingNames.some((n) => n.toLowerCase() === trimmedName.toLowerCase())) { setError(`"${trimmedName}" already exists.`); return; }
+    onCreate(trimmedName, trimmedEmail || null);
     onClose();
   }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
@@ -66,11 +74,19 @@ function NewChatModal({ title, placeholder = "Member or role name…", onClose, 
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-zinc-500" htmlFor="chat-name">Name</label>
-            <input ref={inputRef} id="chat-name" type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder={placeholder} className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25" />
-            {error && <p className="text-xs text-red-400">{error}</p>}
+            <label className="text-xs text-zinc-500">Name</label>
+            <input ref={inputRef} type="text" value={name} onChange={(e) => { setName(e.target.value); setError(""); }} placeholder="Member or role name…" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25" />
           </div>
-          <button type="submit" disabled={!name.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Create</button>
+          {requireEmail && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-zinc-500">Email <span className="text-zinc-600">(required)</span></label>
+              <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); setError(""); }} placeholder="teammate@company.com" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25" />
+            </div>
+          )}
+          {error && <p className="text-xs text-red-400">{error}</p>}
+          <button type="submit" disabled={!name.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
+            Create
+          </button>
         </form>
       </div>
     </div>
@@ -402,6 +418,53 @@ function RoleSelectPopup({ onSelect }) {
   );
 }
 
+function OrgCodeSetupModal({ onClose, onSave }) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const inputRef = useRef(null);
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+    if (trimmed.length < 4) { setError("Code must be at least 4 characters."); return; }
+    onSave(trimmed);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }}>
+      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-zinc-100">Set Organisation Code</h2>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
+        </div>
+        <p className="mb-1 text-xs text-zinc-500">This acts like an organisation password — all members need it to join your workspace.</p>
+        <p className="mb-5 text-xs text-zinc-600">Users you haven't invited cannot join even with the code.</p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-zinc-500">Organisation Code</label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={code}
+              onChange={(e) => { setCode(e.target.value.toUpperCase()); setError(""); }}
+              placeholder="e.g. MYCODE"
+              maxLength={12}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm font-mono text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25"
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
+          </div>
+          <button type="submit" disabled={!code.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
+            Save Code
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -463,6 +526,10 @@ export default function DashboardPage() {
   //login pop-up states
   const [showRolePopup, setShowRolePopup] = useState(false);
   const [roleSelected, setRoleSelected] = useState(false);
+
+  //org code stup
+  const [orgCodeSet, setOrgCodeSet] = useState(false);
+  const [showOrgCodeSetup, setShowOrgCodeSetup] = useState(false);
 
   async function saveCanvas(action, payload) {
     if (!workspaceId || !userId) return null;
@@ -610,11 +677,14 @@ export default function DashboardPage() {
       if (!workspace) throw new Error("Unable to load workspace.");
       if (cancelled) return;
       setWorkspaceId(workspace.id);
+      const { data: wsData } = await supabase
+      .from("workspaces").select("org_code").eq("id", workspace.id).single();
+      if (wsData?.org_code) setOrgCodeSet(true);
       const { data: ws } = await supabase
       .from("workspaces")
       .select("seen_onboarding, user_role")
       .eq("id", workspace.id)
-     .single();
+      .single();
 
       if (ws && !ws.seen_onboarding) {
         setShowRolePopup(true);
@@ -795,6 +865,13 @@ export default function DashboardPage() {
     finally { setOnboardingBusy(false); setOnboardingInput(""); }
   }, [onboardingBusy, onboardingChatId, onboardingMessages, runSilentBackgroundSummary, workspaceId]);
 
+  async function handleSaveOrgCode(code) {
+    await supabase.from("workspaces")
+      .update({ org_code: code })
+      .eq("id", workspaceId);
+    setOrgCodeSet(true);
+  }
+
   async function handleSummariseNowClick() {
     if (!onboardingChatId || onboardingBusy || summariseConfirmLoading) return;
     setSummariseConfirmLoading(true); setOnboardingError(null);
@@ -848,12 +925,16 @@ export default function DashboardPage() {
     return { x: baseX, y: baseY };
   }
 
-  async function handleCreateTeammate(name) {
+  async function handleCreateTeammate(name, email) {
     const pos = getNextTeammatePos();
     const result = await saveCanvas("create_teammate", { name, pos });
     if (!result?.data) return;
     const { id } = result.data;
-    setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: null }]);
+    if (email) await saveCanvas("assign_email", { chatId: id, email });
+    setTeammates((prev) => [...prev, { id, name, pos, assignedEmail: email ?? null }]);
+
+    // First teammate creation — trigger org code setup if not set
+    if (!orgCodeSet) setShowOrgCodeSetup(true);
   }
 
   async function handleCreateManager(name) {
@@ -954,6 +1035,12 @@ export default function DashboardPage() {
   return (
       <>
       {showRolePopup && <RoleSelectPopup onSelect={handleRoleSelect} />}
+      {showOrgCodeSetup && (
+    <OrgCodeSetupModal
+      onClose={() => setShowOrgCodeSetup(false)}
+      onSave={handleSaveOrgCode}
+    />
+  )}
       <style>{`
         * { scrollbar-width: thin; scrollbar-color: #3f3f46 transparent; }
         *::-webkit-scrollbar { width: 3px; height: 3px; }
@@ -964,7 +1051,7 @@ export default function DashboardPage() {
         *::-webkit-scrollbar-corner { background: transparent; }
       `}</style>
 
-      {modalType === "teammate" && <NewChatModal title="New Teammate Chat" onClose={() => setModalType(null)} onCreate={handleCreateTeammate} existingNames={allNames} />}
+      {modalType === "teammate" && <NewChatModal title="New Teammate Chat" requireEmail={true} onClose={() => setModalType(null)} onCreate={handleCreateTeammate} existingNames={allNames} />}
       {modalType === "manager" && <NewChatModal title="New Manager Chat" onClose={() => setModalType(null)} onCreate={handleCreateManager} existingNames={allNames} />}
       {assignTargetId && assignTarget && (
         <AssignModal
