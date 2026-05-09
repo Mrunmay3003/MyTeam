@@ -113,10 +113,6 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
     const markerIdx = fullReply.indexOf(marker);
     const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
 
-    const marker = "MANAGER_TASKS_UPDATE";
-    const markerIdx = fullReply.indexOf(marker);
-    const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
-
     // Clear surfaced feedback after manager sees it
     if (hasFeedback) {
       await supabaseAdmin.from("manager_tasks")
@@ -125,7 +121,7 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
         .in("status", ["pending", "in_progress"])
         .not("feedback", "is", null);
     }
-    
+
     // Parse and save tasks
     let tasksCreated = 0;
     if (markerIdx !== -1) {
