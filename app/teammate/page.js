@@ -23,6 +23,7 @@ function getInitials(name) { return name.slice(0, 2).toUpperCase(); }
 function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
+  const [initialized, setInitialized] = useState(false);
   const containerRef = useRef(null);
   const scaleRef = useRef(1);
   const offsetRef = useRef({ x: 0, y: 0 });
@@ -30,13 +31,29 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
 
+  const MGR_W = 440;
+  const MGR_HEADER_H = 42;
+  const TM_W = 160;
+  const TM_H = 42;
+
   useEffect(() => {
     if (initRef.current || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    setOffset({ x: rect.width / 2, y: rect.height / 2 });
-    offsetRef.current = { x: rect.width / 2, y: rect.height / 2 };
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    let newOffset;
+    if (managerNode) {
+      const mgCx = managerNode.pos.x + MGR_W / 2;
+      const mgCy = managerNode.pos.y + MGR_HEADER_H / 2;
+      newOffset = { x: cx - mgCx, y: cy - mgCy };
+    } else {
+      newOffset = { x: cx, y: cy };
+    }
+    setOffset(newOffset);
+    offsetRef.current = newOffset;
     initRef.current = true;
-  }, []);
+    setInitialized(true);
+  }, [managerNode]);
 
   useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => { offsetRef.current = offset; }, [offset]);
@@ -74,17 +91,26 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
     document.addEventListener("mouseup", onUp);
   }
 
-  const MGR_W = 440;
-  const MGR_HEADER_H = 42;
-  const TM_W = 160;
-  const TM_H = 42;
+  function resetView() {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    if (managerNode) {
+      const mgCx = managerNode.pos.x + MGR_W / 2;
+      const mgCy = managerNode.pos.y + MGR_HEADER_H / 2;
+      setOffset({ x: cx - mgCx, y: cy - mgCy });
+    } else {
+      setOffset({ x: cx, y: cy });
+    }
+    setScale(1);
+  }
 
   return (
-    <div ref={containerRef} className="relative flex-1 overflow-hidden select-none" onMouseDown={onMouseDown} onContextMenu={e => e.preventDefault()}>
+    <div ref={containerRef} className={`relative flex-1 overflow-hidden select-none transition-opacity duration-150 ${initialized ? "opacity-100" : "opacity-0"}`} onMouseDown={onMouseDown} onContextMenu={e => e.preventDefault()}>
       <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(circle, #3f3f46 1px, transparent 1px)", backgroundSize: `${28 * scale}px ${28 * scale}px`, backgroundPosition: `${offset.x}px ${offset.y}px`, opacity: 0.5 }} />
       <div style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", transformOrigin: "0 0", transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}>
 
-        {/* Connection lines */}
         {managerNode && teammates.length > 0 && (
           <svg style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%", overflow: "visible", pointerEvents: "none", zIndex: 1 }}>
             {teammates.map((tm) => {
@@ -100,7 +126,6 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
           </svg>
         )}
 
-        {/* Manager node — locked, header only */}
         {managerNode && (
           <div style={{ position: "absolute", left: managerNode.pos.x, top: managerNode.pos.y, width: MGR_W, zIndex: 10 }}>
             <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-xl shadow-black/50">
@@ -112,7 +137,6 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
           </div>
         )}
 
-        {/* Teammate nodes */}
         {teammates.map((tm) => {
           const isMe = tm.id === myChat;
           return (
@@ -124,7 +148,13 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
           );
         })}
       </div>
-      <p className="absolute bottom-4 right-4 text-[11px] text-zinc-600 select-none pointer-events-none">Read-only · Scroll to zoom · Middle-click to pan</p>
+
+      <div className="absolute bottom-4 right-4 flex flex-col items-end gap-2 pointer-events-none">
+        <button type="button" onClick={resetView} title="Re-centre" className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-700 bg-zinc-800/90 text-zinc-400 shadow-md transition-colors hover:border-zinc-500 hover:bg-zinc-700 hover:text-zinc-200">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /><rect x="7" y="7" width="10" height="10" rx="1" /></svg>
+        </button>
+        <p className="text-[11px] text-zinc-600 select-none">Read-only · Scroll to zoom · Middle-click to pan</p>
+      </div>
     </div>
   );
 }
