@@ -673,7 +673,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!settingsMenuOpen) return;
-    function handler() { setSettingsMenuOpen(false); }
+    function handler(e) {
+      if (e.target.closest("[data-settings-menu]")) return;
+      setSettingsMenuOpen(false);
+    }
     document.addEventListener("pointerdown", handler);
     return () => document.removeEventListener("pointerdown", handler);
   }, [settingsMenuOpen]);
@@ -1155,7 +1158,7 @@ export default function DashboardPage() {
             </nav>
             <div className="border-t border-zinc-800 p-2">
               {sidebarOpen ? (
-                <div className="relative">
+                <div className="relative" data-settings-menu>
   {settingsMenuOpen && (
     <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
       <button type="button" onClick={() => { setSettingsMenuOpen(false); setTimeout(() => setShowOrgCodeSetup(true), 50); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
