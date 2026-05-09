@@ -197,7 +197,7 @@ export default function TeammatePage() {
       setUserEmail(session.user.email);
       const { data: ws, error: wsErr } = await supabase
         .from("workspaces")
-        .select("id, linked_workspace_id, linked_chat_id, owner_user_id, user_id")
+        .select("id, linked_workspace_id, linked_chat_id")
         .eq("owner_user_id", session.user.id)
         .maybeSingle();
       console.log("startup workspace check:", ws, wsErr);
