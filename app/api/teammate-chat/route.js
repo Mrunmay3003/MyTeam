@@ -61,7 +61,6 @@ TASK_FEEDBACK
 
 The title must exactly match the task title from your list above. If unsure which task it relates to, use the most relevant one.```
 
-Push, test again with Satyen asking a question — check if feedback column gets populated in `manager_tasks`.
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
