@@ -130,37 +130,63 @@ function RenameModal({ currentName, onClose, onRename, existingNames = [] }) {
 
 // ── Assign Modal ───────────────────────────────────────────────────────────────
 function AssignModal({ teammate, onClose, onAssign, onUnassign }) {
-  const [currentEmail, setCurrentEmail] = useState(teammate.assignedEmail || null);
   const [inputEmail, setInputEmail] = useState("");
+  const [error, setError] = useState("");
   const inputRef = useRef(null);
-  useEffect(() => { if (!currentEmail) inputRef.current?.focus(); }, [currentEmail]);
-  function handleUnassign() { onUnassign(); setCurrentEmail(null); setTimeout(() => inputRef.current?.focus(), 50); }
+  const hasEmail = !!teammate.assignedEmail;
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
   function handleAssign(e) {
     e.preventDefault();
     const trimmed = inputEmail.trim();
-    if (!trimmed || currentEmail) return;
+    if (!trimmed) return;
+    if (!isValidEmail(trimmed)) { setError("Enter a valid email address."); return; }
     onAssign(trimmed);
     onClose();
   }
+
+  function handleUnassign() {
+    onUnassign();
+    onClose();
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(3px)" }} onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="relative w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-6 shadow-2xl shadow-black/70">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-zinc-100">Assign — {teammate.name}</h2>
-          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
+          <button type="button" onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><XIcon /></button>
         </div>
-        {currentEmail && (
-          <div className="mb-4 flex items-center justify-between gap-2 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2.5">
-            <span className="truncate text-sm text-zinc-300">{currentEmail}</span>
-            <button type="button" onClick={handleUnassign} className="shrink-0 flex h-5 w-5 items-center justify-center rounded text-zinc-500 transition-colors hover:bg-zinc-700 hover:text-zinc-300" aria-label="Unassign"><XIcon className="h-3 w-3" /></button>
+
+        {hasEmail && (
+          <div className="mb-4">
+            <p className="mb-1 text-[11px] text-zinc-600 uppercase tracking-wide">Currently assigned</p>
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-800/60 px-3 py-2">
+              <span className="text-xs text-zinc-400">{teammate.assignedEmail}</span>
+              <button type="button" onClick={handleUnassign} className="shrink-0 text-[11px] text-red-400 hover:text-red-300 transition-colors">Remove</button>
+            </div>
           </div>
         )}
+
         <form onSubmit={handleAssign} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-zinc-500">Email</label>
-            <input ref={inputRef} type="email" value={inputEmail} onChange={(e) => setInputEmail(e.target.value)} placeholder="teammate@company.com" disabled={!!currentEmail} className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25 disabled:opacity-40 disabled:cursor-not-allowed" />
+            <label className="text-xs text-zinc-500">{hasEmail ? "Reassign to new email" : "Assign email"}</label>
+            <input
+              ref={inputRef}
+              type="email"
+              value={inputEmail}
+              onChange={(e) => { setInputEmail(e.target.value); setError(""); }}
+              placeholder="teammate@company.com"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-500 focus:ring-2 focus:ring-zinc-500/25"
+            />
+            {error && <p className="text-xs text-red-400">{error}</p>}
           </div>
-          <button type="submit" disabled={!!currentEmail || !inputEmail.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">Assign</button>
+          <button type="submit" disabled={!inputEmail.trim()} className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-40">
+            {hasEmail ? "Reassign" : "Assign"}
+          </button>
         </form>
       </div>
     </div>
