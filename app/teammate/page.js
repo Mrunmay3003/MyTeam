@@ -56,6 +56,7 @@ export default function TeammatePage() {
       body: JSON.stringify({ orgCode: trimmed, userEmail }),
     });
     const data = await res.json();
+    console.log("verify-org-code response:", res.status, data);
 
     if (!data.match) {
       setOrgCodeError("Invalid organisation code. Please check and try again.");
