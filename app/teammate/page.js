@@ -352,10 +352,15 @@ export default function TeammatePage() {
     setBusy(true);
     setInput("");
 
-    const ins = await supabase.from("messages").insert({ chat_id: chatId, role: "user", content: trimmed }).select("id, role, content, created_at").single();
-    if (ins.error) { setBusy(false); return; }
+    const insRes = await fetch("/api/save-canvas", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "save_message", workspaceId, userId, payload: { chatId, role: "user", content: trimmed } }),
+    });
+    const insJson = await insRes.json();
+    if (!insRes.ok || !insJson.data) { setBusy(false); return; }
 
-    const nextMessages = [...messages, ins.data];
+    const nextMessages = [...messages, insJson.data];
     setMessages(nextMessages);
 
     const res = await fetch("/api/teammate-chat", {
@@ -366,8 +371,13 @@ export default function TeammatePage() {
     const payload = await res.json();
     const replyText = payload.reply || "Something went wrong.";
 
-    const asstIns = await supabase.from("messages").insert({ chat_id: chatId, role: "assistant", content: replyText }).select("id, role, content, created_at").single();
-    if (!asstIns.error) setMessages(prev => [...prev, asstIns.data]);
+    const asstRes = await fetch("/api/save-canvas", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "save_message", workspaceId, userId, payload: { chatId, role: "assistant", content: replyText } }),
+    });
+    const asstJson = await asstRes.json();
+    if (asstJson.data) setMessages(prev => [...prev, asstJson.data]);
     setBusy(false);
   }
 

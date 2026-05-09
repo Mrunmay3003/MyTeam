@@ -167,6 +167,17 @@ export async function POST(request) {
     return Response.json({ ok: true });
   }
 
+  if (action === "save_message") {
+  const { chatId, role, content } = payload;
+  const { data, error } = await supabaseAdmin
+    .from("messages")
+    .insert({ chat_id: chatId, role, content })
+    .select("id, role, content, created_at")
+    .single();
+  if (error) return Response.json({ error: error.message }, { status: 500 });
+  return Response.json({ ok: true, data });
+}
+
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
   } catch (err) {
