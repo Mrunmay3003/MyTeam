@@ -1158,7 +1158,7 @@ export default function DashboardPage() {
                 <div className="relative">
   {settingsMenuOpen && (
     <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
-      <button type="button" onClick={() => { setShowOrgCodeSetup(true); setSettingsMenuOpen(false); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+      <button type="button" onClick={() => { setSettingsMenuOpen(false); setTimeout(() => setShowOrgCodeSetup(true), 50); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
         Set Organisation Code
       </button>
     </div>
