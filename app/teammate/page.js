@@ -1,10 +1,7 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-
-const [myWorkspaceId, setMyWorkspaceId] = useState(null);
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function ChevronLeftIcon({ className }) {
