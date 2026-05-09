@@ -347,6 +347,7 @@ export default function TeammatePage() {
 
   async function handleSend() {
     if (!input.trim() || busy) return;
+    console.log("handleSend", { chatId, workspaceId, chatName });
     const trimmed = input.trim();
     setBusy(true);
     setInput("");
