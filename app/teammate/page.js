@@ -50,35 +50,26 @@ export default function TeammatePage() {
     setOrgCodeBusy(true);
     setOrgCodeError("");
 
-    // Find workspace with this org code
-    const { data: ws, error: wsErr } = await supabase
-      .from("workspaces")
-      .select("id, name, org_code")
-      .eq("org_code", trimmed)
-      .maybeSingle();
+    const res = await fetch("/api/verify-org-code", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ orgCode: trimmed, userEmail }),
+    });
+    const data = await res.json();
 
-    if (wsErr || !ws) {
+    if (!data.match) {
       setOrgCodeError("Invalid organisation code. Please check and try again.");
       setOrgCodeBusy(false);
       return;
     }
 
-    // Check if this email is invited
-    const { data: chat } = await supabase
-      .from("chats")
-      .select("id, name")
-      .eq("workspace_id", ws.id)
-      .eq("assigned_email", userEmail)
-      .eq("type", "teammate")
-      .maybeSingle();
-
-    setWorkspaceId(ws.id);
-    setOrgName(ws.name);
+    setWorkspaceId(data.workspaceId);
+    setOrgName(data.orgName);
     setOrgCodeBusy(false);
 
-    if (chat) {
-      setChatId(chat.id);
-      setChatName(chat.name);
+    if (data.invited) {
+      setChatId(data.chatId);
+      setChatName(data.chatName);
       setStep("invited");
     } else {
       setStep("not_invited");
