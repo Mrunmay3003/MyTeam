@@ -157,6 +157,16 @@ export async function POST(request) {
   return Response.json({ ok: true });
 }
 
+  if (action === "save_teammate_link") {
+    const { linkedWorkspaceId, linkedChatId } = payload;
+    const { error } = await supabaseAdmin
+      .from("workspaces")
+      .update({ linked_workspace_id: linkedWorkspaceId, linked_chat_id: linkedChatId })
+      .eq("id", workspaceId);
+    if (error) return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ ok: true });
+  }
+
     return Response.json({ error: "Unknown action." }, { status: 400 });
 
   } catch (err) {

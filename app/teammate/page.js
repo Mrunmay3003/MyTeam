@@ -198,7 +198,7 @@ export default function TeammatePage() {
       const { data: ws, error: wsErr } = await supabase
         .from("workspaces")
         .select("id, linked_workspace_id, linked_chat_id, owner_user_id, user_id")
-        .or(`owner_user_id.eq.${session.user.id},user_id.eq.${session.user.id}`)
+        .eq("owner_user_id", session.user.id)
         .maybeSingle();
       console.log("startup workspace check:", ws, wsErr);
 
@@ -296,11 +296,17 @@ export default function TeammatePage() {
       }
 
       if (wsId) {
-        const { error: linkErr } = await supabase.from("workspaces")
-          .update({ linked_workspace_id: workspaceId, linked_chat_id: chatId })
-          .eq("id", wsId);
-        console.log("link saved", linkErr);
-      }
+      await fetch("/api/save-canvas", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          action: "save_teammate_link",
+          workspaceId: wsId,
+          userId,
+          payload: { linkedWorkspaceId: workspaceId, linkedChatId: chatId },
+        }),
+      });
+    }
 
       console.log("calling loadAndEnterChat", workspaceId, chatId);
       await loadAndEnterChat(workspaceId, chatId);
