@@ -137,19 +137,76 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
               if (match) assigneeIds = [match.id];
             }
 
-            const { data: inserted, error: insertErr } = await supabaseAdmin
+            for (const task of taskArray) {
+            // Fuzzy assignee match
+            let assigneeIds = null;
+            if (task.assignee_name && task.task_type === "teammate_task") {
+              const match = teammates.find(t =>
+                t.name.toLowerCase().includes(task.assignee_name.toLowerCase()) ||
+                task.assignee_name.toLowerCase().includes(t.name.toLowerCase())
+              );
+              if (match) assigneeIds = [match.id];
+            }
+
+            // Check if task with same title already exists — UPDATE instead of INSERT
+            const { data: existing } = await supabaseAdmin
               .from("manager_tasks")
-              .insert({
-                workspace_id: workspaceId,
-                title: task.title,
+              .select("id")
+              .eq("workspace_id", workspaceId)
+              .ilike("title", task.title)
+              .maybeSingle();
+
+            if (existing) {
+              // UPDATE existing task
+              await supabaseAdmin.from("manager_tasks").update({
                 description: task.description,
-                task_type: task.task_type,
-                assignee_ids: assigneeIds,
                 deadline_ist: task.deadline_ist ?? null,
                 priority: task.priority ?? 3,
+                assignee_ids: assigneeIds ?? undefined,
                 status: "pending",
-                source_context: businessContext.slice(0, 500),
-              })
+                updated_at: new Date().toISOString(),
+              }).eq("id", existing.id);
+              tasksCreated++;
+            } else {
+              // INSERT new task
+              const { data: inserted, error: insertErr } = await supabaseAdmin
+                .from("manager_tasks")
+                .insert({
+                  workspace_id: workspaceId,
+                  title: task.title,
+                  description: task.description,
+                  task_type: task.task_type,
+                  assignee_ids: assigneeIds,
+                  deadline_ist: task.deadline_ist ?? null,
+                  priority: task.priority ?? 3,
+                  status: "pending",
+                  source_context: businessContext.slice(0, 500),
+                })
+                .select("id").single();
+
+              if (insertErr) { console.error("Task insert error:", insertErr); continue; }
+              tasksCreated++;
+
+              if (task.deadline_ist && task.scheduled_message && inserted) {
+                const targets =
+                  task.task_type === "broadcast_task" ? teammates.map(t => ({ target_type: "teammate", target_id: t.id })) :
+                  task.task_type === "ai_reminder" ? [{ target_type: "manager", target_id: null }] :
+                  (assigneeIds ?? []).map(id => ({ target_type: "teammate", target_id: id }));
+
+                for (const target of targets) {
+                  await supabaseAdmin.from("scheduled_prompts").insert({
+                    workspace_id: workspaceId,
+                    task_id: inserted.id,
+                    target_type: target.target_type,
+                    target_id: target.target_id,
+                    message_draft: task.scheduled_message,
+                    send_at_ist: task.deadline_ist,
+                    sent: false,
+                  });
+                }
+              }
+            }
+          }
               .select("id").single();
 
             if (insertErr) { console.error("Task insert error:", insertErr); continue; }
