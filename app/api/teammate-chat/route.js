@@ -31,7 +31,7 @@ const codeDetectedDone = doneKeywords.some(k => lastUserMsg.includes(k));
       .from("manager_tasks")
       .select("title, description, priority, deadline_ist, status, feedback, is_answered")
       .eq("workspace_id", workspaceId)
-      .contains("assignee_ids", [chatId])
+      .contains("assignee_ids", JSON.stringify([chatId]))
       .in("status", ["pending", "in_progress"]);
 
     const tasksContext = tasks?.length > 0
