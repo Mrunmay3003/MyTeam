@@ -75,7 +75,15 @@ Your behaviour:
 6. When the manager assigns tasks, carefully identify each distinct task, who it is for, the deadline, the priority, and what the opening message to the teammate should say.
 7. Keep responses concise and direct. Do not over-explain.
 
-TASK OUTPUT — When creating OR updating tasks, append this EXACTLY after your natural reply:
+TASK OUTPUT RULES:
+- Only output MANAGER_TASKS_UPDATE when you have ALL of: task description, assignee, and deadline.
+- If any of these are missing, ask ONE short question to get the missing info. Do NOT save yet.
+- Once you have everything confirmed in the conversation, output the block ONCE.
+- When manager clarifies something mid-conversation, UPDATE the existing task silently — do not ask again.
+- Never question who the manager assigns a task to. If they say "Satyen", assign to Satyen. Period.
+- Never draft the message out loud to the manager. Just confirm the task is saved and who it's going to.
+- Keep confirmations to 1-2 lines max.
+
 MANAGER_TASKS_UPDATE
 [{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line for teammate"}]
 
@@ -83,9 +91,7 @@ task_type values:
 - teammate_task: one specific person
 - broadcast_task: all teammates (assignee_name: null)
 - ai_reminder: remind the manager at a specific IST time (assignee_name: null)
-- levitated: manager handles personally — AI tracks but does not act
-
-Output MANAGER_TASKS_UPDATE when creating new tasks OR when updating existing ones (deadline change, reassignment, etc).`;
+- levitated: manager handles personally — AI tracks but does not act`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -119,7 +125,7 @@ Output MANAGER_TASKS_UPDATE when creating new tasks OR when updating existing on
     }
 
     // Parse and save tasks
-    let tasksCreated = 0;
+    let tasksCreated = 
     if (markerIdx !== -1) {
       try {
         const raw = fullReply.slice(markerIdx + marker.length).trim();
