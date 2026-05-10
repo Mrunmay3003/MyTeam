@@ -17,6 +17,14 @@ function getISTTime() {
 export async function POST(req) {
   try {
     const { messages, chatId, workspaceId, chatName } = await req.json();
+
+// Code-side in-progress detection — don't rely on AI for this
+const lastUserMsg = [...messages].reverse().find(m => m.role === "user")?.content?.toLowerCase() ?? "";
+const inProgressKeywords = ["start", "starting", "begin", "begun", "working on", "will do", "on it", "i'll do", "got it", "sure", "okay i'll", "alright i'll", "on my way", "i will"];
+const doneKeywords = ["done", "finished", "completed", "submitted", "sent it", "all done", "wrapped up"];
+
+const codeDetectedInProgress = inProgressKeywords.some(k => lastUserMsg.includes(k));
+const codeDetectedDone = doneKeywords.some(k => lastUserMsg.includes(k));
     if (!chatId || !workspaceId) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
     const { data: tasks } = await supabaseAdmin
@@ -37,7 +45,7 @@ export async function POST(req) {
             feedbackNote = `\n⚠ PENDING MANAGER RESPONSE: A question was raised about this task ("${t.feedback}"). The manager has NOT answered yet. If asked about this, say the manager has been informed and you are waiting for their response. Do NOT try to answer from the description.`;
           }
 
-          return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline} — Priority: ${t.priority}\nDetails: ${t.description}${feedbackNote}`;
+          return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline}\nDetails: ${t.description}${feedbackNote}`;
         }).join("\n\n")
       : "No active tasks assigned yet.";
 
@@ -150,7 +158,23 @@ If none of the above apply, do not append any marker.`;
       } catch (err) { console.error("Action parse error:", err); }
     }
 
-    return NextResponse.json({ reply: visibleReply });
+    // Code-side status update — fires even if AI missed the marker
+if (codeDetectedDone && tasks?.length > 0) {
+  await supabaseAdmin.from("manager_tasks")
+    .update({ status: "done", updated_at: new Date().toISOString() })
+    .eq("workspace_id", workspaceId)
+    .eq("title", tasks[0].title);
+} else if (codeDetectedInProgress && tasks?.length > 0) {
+  const pendingTask = tasks.find(t => t.status === "pending");
+  if (pendingTask) {
+    await supabaseAdmin.from("manager_tasks")
+      .update({ status: "in_progress", updated_at: new Date().toISOString() })
+      .eq("workspace_id", workspaceId)
+      .eq("title", pendingTask.title);
+  }
+}
+
+return NextResponse.json({ reply: visibleReply });
   } catch (err) {
     console.error("teammate-chat error:", err);
     return NextResponse.json({ error: err.message ?? "Internal error" }, { status: 500 });

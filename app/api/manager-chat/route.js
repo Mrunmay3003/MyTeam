@@ -87,6 +87,12 @@ TASK OUTPUT RULES:
 MANAGER_TASKS_UPDATE
 [{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line for teammate"}]
 
+FEEDBACK_ANSWERED — When you surface a teammate question to the manager AND the manager replies with an answer or decision about it, append this ONCE after your reply:
+FEEDBACK_ANSWERED
+{"title":"exact task title the feedback was about"}
+
+Do not append this when you are asking the question. Only append it after the manager has given a response.
+
 task_type values:
 - teammate_task: one specific person
 - broadcast_task: all teammates (assignee_name: null)
@@ -113,18 +119,27 @@ task_type values:
 
     const marker = "MANAGER_TASKS_UPDATE";
     const markerIdx = fullReply.indexOf(marker);
-    const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
+const feedbackAnsweredIdx = fullReply.indexOf(feedbackMarker);
+const firstMarkerIdx = [markerIdx, feedbackAnsweredIdx].filter(i => i !== -1).sort((a,b) => a-b)[0] ?? -1;
+const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
 
     // Clear surfaced feedback after manager sees it
-    const lastMessage = messages[messages.length - 1];
-    const managerJustAnswered = hasFeedback && lastMessage?.role === "user";
-    if (managerJustAnswered) {
+    const marker = "MANAGER_TASKS_UPDATE";
+const feedbackMarker = "FEEDBACK_ANSWERED";
+const feedbackMarkerIdx = fullReply.indexOf(feedbackMarker);
+if (feedbackMarkerIdx !== -1) {
+  try {
+    const raw = fullReply.slice(feedbackMarkerIdx + feedbackMarker.length).trim();
+    const s = raw.indexOf("{"); const e = raw.lastIndexOf("}");
+    if (s !== -1 && e !== -1) {
+      const parsed = JSON.parse(raw.slice(s, e + 1));
       await supabaseAdmin.from("manager_tasks")
         .update({ feedback: null, is_answered: true, updated_at: new Date().toISOString() })
         .eq("workspace_id", workspaceId)
-        .in("status", ["pending", "in_progress"])
-        .eq("is_answered", false);
+        .eq("title", parsed.title);
     }
+  } catch (err) { console.error("Feedback answer parse error:", err); }
+}
 
     // Parse and save tasks
     let tasksCreated = 0;
