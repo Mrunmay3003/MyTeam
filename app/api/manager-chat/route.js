@@ -28,7 +28,7 @@ export async function POST(req) {
 
     // Fetch active tasks
     const { data: activeTasks } = await supabaseAdmin
-      .from("manager_tasks").select("title, description, task_type, assignee_ids, deadline_ist, priority, status, feedback")
+      .from("manager_tasks").select("title, description, task_type, assignee_ids, deadline_ist, priority, status, feedback, is_answered")
       .eq("workspace_id", workspaceId).in("status", ["pending", "in_progress"]).order("priority", { ascending: true });
 
     const tasksContext = activeTasks?.length > 0
@@ -39,7 +39,7 @@ export async function POST(req) {
           const deadline = t.deadline_ist
             ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(t.deadline_ist))
             : "No deadline";
-          const fb = t.feedback ? ` ⚠ Teammate feedback: "${t.feedback}"` : "";
+          const fb = (t.feedback && t.is_answered === false) ? ` ⚠ Unanswered teammate question: "${t.feedback}"` : "";
           return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — ${assigneeName} — Due: ${deadline} — Priority: ${t.priority}${fb}`;
         }).join("\n")
       : "No active tasks.";
@@ -48,7 +48,7 @@ export async function POST(req) {
       ? teammates.map(t => `- ${t.name}${t.assignedEmail ? ` (${t.assignedEmail})` : ""}`).join("\n")
       : "No teammates added yet.";
 
-    const hasFeedback = activeTasks?.some(t => t.feedback);
+    const hasFeedback = activeTasks?.some(t => t.feedback && t.is_answered === false);
 
     const systemPrompt = `You are the Manager Chat AI for MyTeam — a direct, intelligent async team coordination assistant.
 
@@ -63,8 +63,8 @@ ${tasksContext}
 Teammate Chats available:
 ${teammateList}
 
-${hasFeedback ? `⚠ IMPORTANT: The following tasks have unread feedback from teammates — mention these AT THE START of your very first response, before anything else:
-${activeTasks?.filter(t => t.feedback).map(t => `- "${t.title}": ${t.feedback}`).join("\n")}` : ""}
+${hasFeedback ? `⚠ IMPORTANT: The following tasks have unanswered questions from teammates — address these AT THE START of your first response. Once you answer, the question is considered resolved:
+${activeTasks?.filter(t => t.feedback && t.is_answered === false).map(t => `- "${t.title}": ${t.feedback}`).join("\n")}` : ""}
 
 Your behaviour:
 1. Help assign tasks, set deadlines, coordinate the team — this is your primary job.
@@ -117,11 +117,11 @@ task_type values:
 
     // Clear surfaced feedback after manager sees it
     if (hasFeedback) {
-      await supabaseAdmin.from("manager_tasks")
-        .update({ feedback: null, updated_at: new Date().toISOString() })
-        .eq("workspace_id", workspaceId)
-        .in("status", ["pending", "in_progress"])
-        .not("feedback", "is", null);
+    await supabaseAdmin.from("manager_tasks")
+    .update({ feedback: null, is_answered: true, updated_at: new Date().toISOString() })
+    .eq("workspace_id", workspaceId)
+    .in("status", ["pending", "in_progress"])
+    .eq("is_answered", false);
     }
 
     // Parse and save tasks
