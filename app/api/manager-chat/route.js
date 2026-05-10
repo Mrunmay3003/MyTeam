@@ -90,7 +90,9 @@ MANAGER_TASKS_UPDATE
 
 FEEDBACK_ANSWERED — When you surface a teammate question to the manager AND the manager replies with an answer or decision about it, append this ONCE after your reply:
 FEEDBACK_ANSWERED
-{"title":"exact task title the feedback was about"}
+{"title":"exact task title","updated_description":"full original description plus the manager's answer appended"}
+
+- When answering a teammate's question, ALWAYS output MANAGER_TASKS_UPDATE with the updated description that includes the answer. Output FEEDBACK_ANSWERED in the same reply, after MANAGER_TASKS_UPDATE.
 
 Do not append this when you are asking the question. Only append it after the manager has given a response.
 
@@ -132,12 +134,14 @@ if (feedbackMarkerIdx !== -1) {
     const raw = fullReply.slice(feedbackMarkerIdx + feedbackMarker.length).trim();
     const s = raw.indexOf("{"); const e = raw.lastIndexOf("}");
     if (s !== -1 && e !== -1) {
-      const parsed = JSON.parse(raw.slice(s, e + 1));
-      await supabaseAdmin.from("manager_tasks")
-        .update({ feedback: null, is_answered: true, updated_at: new Date().toISOString() })
-        .eq("workspace_id", workspaceId)
-        .eq("title", parsed.title);
-    }
+  const parsed = JSON.parse(raw.slice(s, e + 1));
+  const updatePayload = { feedback: null, is_answered: true, updated_at: new Date().toISOString() };
+  if (parsed.updated_description) updatePayload.description = parsed.updated_description;
+  await supabaseAdmin.from("manager_tasks")
+    .update(updatePayload)
+    .eq("workspace_id", workspaceId)
+    .eq("title", parsed.title);
+}
   } catch (err) { console.error("Feedback answer parse error:", err); }
 }
 

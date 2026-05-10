@@ -41,9 +41,11 @@ const codeDetectedDone = doneKeywords.some(k => lastUserMsg.includes(k));
             : "No deadline";
           
           let feedbackNote = "";
-          if (t.is_answered === false) {
-            feedbackNote = `\n⚠ PENDING MANAGER RESPONSE: A question was raised about this task ("${t.feedback}"). The manager has NOT answered yet. If asked about this, say the manager has been informed and you are waiting for their response. Do NOT try to answer from the description.`;
-          }
+if (t.is_answered === false) {
+  feedbackNote = `\n⚠ PENDING MANAGER RESPONSE: A question was raised about this task ("${t.feedback}"). The manager has NOT answered yet. If asked about this, say the manager has been informed and you are waiting for their response. Do NOT try to answer from the description.`;
+} else if (t.is_answered === true) {
+  feedbackNote = `\n✅ MANAGER HAS ANSWERED: A previous question about this task has been answered. The updated description above contains the answer. If the teammate asks about it, say the manager has clarified and refer to the task details for the answer.`;
+}
 
           return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline}\nDetails: ${t.description}${feedbackNote}`;
         }).join("\n\n")
@@ -165,7 +167,8 @@ if (codeDetectedDone && tasks?.length > 0) {
     .eq("workspace_id", workspaceId)
     .eq("title", tasks[0].title);
 } else if (codeDetectedInProgress && tasks?.length > 0) {
-  const pendingTask = tasks.find(t => t.status === "pending");
+  const pendingTask = tasks.find(t => t.status === "pending" && lastUserMsg.includes(t.title.toLowerCase())) 
+    ?? (tasks.length === 1 ? tasks[0] : null);
   if (pendingTask) {
     await supabaseAdmin.from("manager_tasks")
       .update({ status: "in_progress", updated_at: new Date().toISOString() })
