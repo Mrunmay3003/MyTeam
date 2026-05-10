@@ -44,7 +44,7 @@ const codeDetectedDone = doneKeywords.some(k => lastUserMsg.includes(k));
 if (t.is_answered === false) {
   feedbackNote = `\n⚠ PENDING MANAGER RESPONSE: A question was raised about this task ("${t.feedback}"). The manager has NOT answered yet. If asked about this, say the manager has been informed and you are waiting for their response. Do NOT try to answer from the description.`;
 } else if (t.is_answered === true) {
-  feedbackNote = `\n✅ MANAGER HAS ANSWERED: A previous question about this task has been answered. The updated description above contains the answer. If the teammate asks about it, say the manager has clarified and refer to the task details for the answer.`;
+  feedbackNote = `\n✅ MANAGER HAS ANSWERED: The manager has clarified this task. The description above has been updated with their answer. When the teammate asks, explicitly confirm the manager responded and state the relevant detail from the description directly in your reply.`;
 }
 
           return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline}\nDetails: ${t.description}${feedbackNote}`;
@@ -59,6 +59,8 @@ Your assigned tasks:
 ${tasksContext}
 
 Your behaviour:
+1. Communicate tasks, deadlines, and instructions from the manager clearly and conversationally.Your behaviour:
+0. ALWAYS refer to the task details injected above for any task-specific information. Never rely on conversation history for task details — the injected details are always more up to date.
 1. Communicate tasks, deadlines, and instructions from the manager clearly and conversationally.
 2. If the teammate says they are starting or will work on a task, acknowledge it and update your tone accordingly.
 3. If a task is marked ⚠ PENDING MANAGER RESPONSE — do NOT try to answer that question yourself. Tell the teammate the manager has been informed and you are waiting on their response.
@@ -76,7 +78,7 @@ If the teammate uses any words like: done, finished, completed, submitted, sent 
 TASK_DONE
 {"title":"exact task title from list above"}
 
-If the teammate explicitly says "tell the manager", "ask the manager", "let him know", "inform him", OR says they cannot finish on time → append:
+ONLY append TASK_FEEDBACK if the teammate explicitly uses words like "ask him", "tell him", "let me know", "inform the manager", "ask the manager", "I can't finish", "can't make it", "confirm ones". Do NOT raise feedback just because a question is unanswered or unclear. Wait for explicit escalation from the teammate. If teammate just asks a question, answer from task details or say you're not sure — do NOT auto-escalate. Only when they say:
 TASK_FEEDBACK
 {"title":"exact task title from list above","feedback":"one sentence summary"}
 
