@@ -210,7 +210,7 @@ task_type values:
       } catch (parseErr) { console.error("Task parse error:", parseErr); }
     }
 
-    return NextResponse.json({ reply: visibleReply, tasksCreated });
+    return NextResponse.json({ reply: visibleReply, tasksCreated, debug_teammates: teammates.map(t => ({ id: t.id, name: t.name })) });
   } catch (err) {
     console.error("manager-chat error:", err);
     return NextResponse.json({ error: err.message ?? "Internal error" }, { status: 500 });

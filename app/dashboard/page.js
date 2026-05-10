@@ -949,6 +949,7 @@ export default function DashboardPage() {
     });
     const payload = await res.json();
     const replyText = payload.reply || "✓ Task saved.";
+    console.log("debug teammates from server:", payload.debug_teammates);
 
     const asstIns = await supabase.from("messages")
       .insert({ chat_id: managerNode.id, role: "assistant", content: replyText })
