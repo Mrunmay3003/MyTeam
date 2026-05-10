@@ -125,7 +125,7 @@ task_type values:
     }
 
     // Parse and save tasks
-    let tasksCreated = 
+    let tasksCreated = 0;
     if (markerIdx !== -1) {
       try {
         const raw = fullReply.slice(markerIdx + marker.length).trim();
