@@ -138,8 +138,7 @@ task_type values:
             let assigneeIds = null;
             if (task.assignee_name && task.task_type === "teammate_task") {
               const match = teammates.find(t =>
-                t.name.toLowerCase().includes(task.assignee_name.toLowerCase()) ||
-                task.assignee_name.toLowerCase().includes(t.name.toLowerCase())
+                t.name.toLowerCase() === task.assignee_name.toLowerCase()
               );
               if (match) assigneeIds = [match.id];
             }
