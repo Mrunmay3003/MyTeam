@@ -83,6 +83,7 @@ TASK OUTPUT RULES:
 - Never question who the manager assigns a task to. If they say "Satyen", assign to Satyen. Period.
 - Never draft the message out loud to the manager. Just confirm the task is saved and who it's going to.
 - Keep confirmations to 1-2 lines max.
+- ALWAYS write a short conversational confirmation BEFORE the MANAGER_TASKS_UPDATE block. Do not output the marker as your only response.
 
 MANAGER_TASKS_UPDATE
 [{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line for teammate"}]
@@ -120,7 +121,8 @@ task_type values:
     const marker = "MANAGER_TASKS_UPDATE";
     const markerIdx = fullReply.indexOf(marker);
 const feedbackAnsweredIdx = fullReply.indexOf(feedbackMarker);
-const firstMarkerIdx = [markerIdx, feedbackAnsweredIdx].filter(i => i !== -1).sort((a,b) => a-b)[0] ?? -1;
+const allMarkerIdxs = [markerIdx, feedbackAnsweredIdx].filter(idx => idx !== -1);
+const firstMarkerIdx = allMarkerIdxs.length > 0 ? Math.min(...allMarkerIdxs) : -1;
 const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
 
     // Clear surfaced feedback after manager sees it
