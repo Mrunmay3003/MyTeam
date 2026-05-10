@@ -144,6 +144,8 @@ task_type values:
               if (match) assigneeIds = [match.id];
             }
 
+            console.log("assignee match attempt:", { assignee_name: task.assignee_name, teammates: teammates.map(t => t.name), matched: assigneeIds });
+
             // Check if task with same title already exists — UPDATE instead of INSERT
             const { data: existing } = await supabaseAdmin
               .from("manager_tasks")

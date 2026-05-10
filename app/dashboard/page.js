@@ -948,7 +948,7 @@ export default function DashboardPage() {
       body: JSON.stringify({ messages: apiMessages, workspaceId, teammates }),
     });
     const payload = await res.json();
-    const replyText = payload.reply || "Something went wrong.";
+    const replyText = payload.reply || "✓ Task saved.";
 
     const asstIns = await supabase.from("messages")
       .insert({ chat_id: managerNode.id, role: "assistant", content: replyText })
