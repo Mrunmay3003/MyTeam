@@ -124,8 +124,7 @@ const firstMarkerIdx = [markerIdx, feedbackAnsweredIdx].filter(i => i !== -1).so
 const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
 
     // Clear surfaced feedback after manager sees it
-    const marker = "MANAGER_TASKS_UPDATE";
-const feedbackMarker = "FEEDBACK_ANSWERED";
+    const feedbackMarker = "FEEDBACK_ANSWERED";
 const feedbackMarkerIdx = fullReply.indexOf(feedbackMarker);
 if (feedbackMarkerIdx !== -1) {
   try {
