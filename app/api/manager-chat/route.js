@@ -119,14 +119,13 @@ task_type values:
     const fullReply = data.content?.[0]?.text ?? "";
 
     const marker = "MANAGER_TASKS_UPDATE";
-    const markerIdx = fullReply.indexOf(marker);
+const feedbackMarker = "FEEDBACK_ANSWERED";
+const markerIdx = fullReply.indexOf(marker);
 const feedbackAnsweredIdx = fullReply.indexOf(feedbackMarker);
 const allMarkerIdxs = [markerIdx, feedbackAnsweredIdx].filter(idx => idx !== -1);
 const firstMarkerIdx = allMarkerIdxs.length > 0 ? Math.min(...allMarkerIdxs) : -1;
 const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
 
-    // Clear surfaced feedback after manager sees it
-    const feedbackMarker = "FEEDBACK_ANSWERED";
 const feedbackMarkerIdx = fullReply.indexOf(feedbackMarker);
 if (feedbackMarkerIdx !== -1) {
   try {
