@@ -48,7 +48,6 @@ export async function POST(req) {
       ? teammates.map(t => `- ${t.name}${t.assignedEmail ? ` (${t.assignedEmail})` : ""}`).join("\n")
       : "No teammates added yet.";
 
-    // Check for pending feedback to surface
     const hasFeedback = activeTasks?.some(t => t.feedback);
 
     const systemPrompt = `You are the Manager Chat AI for MyTeam — a direct, intelligent async team coordination assistant.
@@ -64,11 +63,9 @@ ${tasksContext}
 Teammate Chats available:
 ${teammateList}
 
-
 ${hasFeedback ? `⚠ IMPORTANT: The following tasks have unread feedback from teammates — mention these AT THE START of your very first response, before anything else:
 ${activeTasks?.filter(t => t.feedback).map(t => `- "${t.title}": ${t.feedback}`).join("\n")}` : ""}
 
-${hasFeedback ? "⚠ IMPORTANT: One or more tasks have feedback from teammates. Surface this proactively at the start of your response if you haven't already." : ""}
 Your behaviour:
 1. Help assign tasks, set deadlines, coordinate the team — this is your primary job.
 2. Reference active tasks naturally during conversation when relevant.
@@ -78,9 +75,9 @@ Your behaviour:
 6. When the manager assigns tasks, carefully identify each distinct task, who it is for, the deadline, the priority, and what the opening message to the teammate should say.
 7. Keep responses concise and direct. Do not over-explain.
 
-TASK OUTPUT — When creating tasks, append this EXACTLY after your natural reply (nothing between reply and this block):
+TASK OUTPUT — When creating OR updating tasks, append this EXACTLY after your natural reply:
 MANAGER_TASKS_UPDATE
-[{"title":"short label","description":"full details with context, what to do, how, priority notes","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line AI sends to teammate or reminder text for manager"}]
+[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line for teammate"}]
 
 task_type values:
 - teammate_task: one specific person
@@ -88,7 +85,7 @@ task_type values:
 - ai_reminder: remind the manager at a specific IST time (assignee_name: null)
 - levitated: manager handles personally — AI tracks but does not act
 
-Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for general conversation.`;
+Output MANAGER_TASKS_UPDATE when creating new tasks OR when updating existing ones (deadline change, reassignment, etc).`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -108,7 +105,6 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
     const data = await response.json();
     const fullReply = data.content?.[0]?.text ?? "";
 
-    // Split reply from task JSON
     const marker = "MANAGER_TASKS_UPDATE";
     const markerIdx = fullReply.indexOf(marker);
     const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
@@ -130,14 +126,8 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
         const s = raw.indexOf("["); const e = raw.lastIndexOf("]");
         if (s !== -1 && e !== -1) {
           const taskArray = JSON.parse(raw.slice(s, e + 1));
-          for (const task of taskArray) {
-            let assigneeIds = null;
-            if (task.assignee_name && task.task_type === "teammate_task") {
-              const match = teammates.find(t => t.name.toLowerCase() === task.assignee_name.toLowerCase());
-              if (match) assigneeIds = [match.id];
-            }
 
-            for (const task of taskArray) {
+          for (const task of taskArray) {
             // Fuzzy assignee match
             let assigneeIds = null;
             if (task.assignee_name && task.task_type === "teammate_task") {
@@ -158,14 +148,15 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
 
             if (existing) {
               // UPDATE existing task
-              await supabaseAdmin.from("manager_tasks").update({
+              const updateData = {
                 description: task.description,
                 deadline_ist: task.deadline_ist ?? null,
                 priority: task.priority ?? 3,
-                assignee_ids: assigneeIds ?? undefined,
                 status: "pending",
                 updated_at: new Date().toISOString(),
-              }).eq("id", existing.id);
+              };
+              if (assigneeIds) updateData.assignee_ids = assigneeIds;
+              await supabaseAdmin.from("manager_tasks").update(updateData).eq("id", existing.id);
               tasksCreated++;
             } else {
               // INSERT new task
@@ -204,31 +195,6 @@ Only output MANAGER_TASKS_UPDATE when new tasks are being created. Never for gen
                     sent: false,
                   });
                 }
-              }
-            }
-          }
-              .select("id").single();
-
-            if (insertErr) { console.error("Task insert error:", insertErr); continue; }
-            tasksCreated++;
-
-            // Schedule prompt if deadline + message present
-            if (task.deadline_ist && task.scheduled_message) {
-              const targets =
-                task.task_type === "broadcast_task" ? teammates.map(t => ({ target_type: "teammate", target_id: t.id })) :
-                task.task_type === "ai_reminder" ? [{ target_type: "manager", target_id: null }] :
-                (assigneeIds ?? []).map(id => ({ target_type: "teammate", target_id: id }));
-
-              for (const target of targets) {
-                await supabaseAdmin.from("scheduled_prompts").insert({
-                  workspace_id: workspaceId,
-                  task_id: inserted.id,
-                  target_type: target.target_type,
-                  target_id: target.target_id,
-                  message_draft: task.scheduled_message,
-                  send_at_ist: task.deadline_ist,
-                  sent: false,
-                });
               }
             }
           }
