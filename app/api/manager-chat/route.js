@@ -29,7 +29,7 @@ export async function POST(req) {
     // Fetch active tasks
     const { data: activeTasks } = await supabaseAdmin
       .from("manager_tasks").select("title, description, task_type, assignee_ids, deadline_ist, priority, status, feedback, is_answered")
-      .eq("workspace_id", workspaceId).in("status", ["pending", "in_progress"]).order("priority", { ascending: true });
+      .eq("workspace_id", workspaceId).in("status", ["pending", "in_progress", "done"]).order("priority", { ascending: true });
 
     const tasksContext = activeTasks?.length > 0
       ? activeTasks.map((t, i) => {
@@ -40,7 +40,8 @@ export async function POST(req) {
             ? new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" }).format(new Date(t.deadline_ist))
             : "No deadline";
           const fb = (t.feedback && t.is_answered === false) ? ` ⚠ Unanswered teammate question: "${t.feedback}"` : "";
-          return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — ${assigneeName} — Due: ${deadline} — Priority: ${t.priority}${fb}`;
+          const doneNote = t.status === "done" ? " ✓ Completed" : "";
+          return `${i + 1}. [${t.status.toUpperCase()}]${doneNote} ${t.title} — ${assigneeName} — Due: ${deadline} — Priority: ${t.priority}${fb}`;
         }).join("\n")
       : "No active tasks.";
 
@@ -68,7 +69,7 @@ ${activeTasks?.filter(t => t.feedback && t.is_answered === false).map(t => `- "$
 
 Your behaviour:
 1. Help assign tasks, set deadlines, coordinate the team — this is your primary job.
-2. Reference active tasks naturally during conversation when relevant.
+2. Reference active tasks naturally during conversation when relevant. When the manager asks for updates on a teammate or task, ALWAYS check the Active Tasks list above — the status field shows exactly where each task stands: PENDING (not started), IN_PROGRESS (teammate is working on it), DONE (completed). Report this status directly. Never say you don't have visibility into what a teammate is doing.
 3. If the manager discusses strategy, long-term plans, new projects, or timeline decisions → briefly engage then say: "That's a planning-level call — bring it up in Business Context so it gets saved. I'll reference it from there once it's stored."
 4. If a teammate name is mentioned that does not closely match anyone in the list → flag it clearly.
 5. Understand IST time in both 12hr and 24hr format. "Tomorrow noon" = tomorrow 12:00 IST. "Friday EOD" = Friday 23:59 IST. "This weekend" = upcoming Saturday/Sunday IST.
