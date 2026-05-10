@@ -56,19 +56,22 @@ Your behaviour:
 5. Keep responses short and direct. No over-explaining.
 6. Always be on the teammate's side — you are their assistant, not a monitor.
 
-IN PROGRESS DETECTION — If the teammate says they are starting, beginning, or will work on a task now, append after your reply:
+CRITICAL RULES — append exactly one marker after your reply if any of these apply:
+
+If the teammate uses any words like: start, begin, working on, will do, on it, starting now → append:
 TASK_IN_PROGRESS
-{"title":"exact task title"}
+{"title":"exact task title from list above"}
 
-DONE DETECTION — If the teammate clearly indicates a task is complete, append after your reply:
+If the teammate uses any words like: done, finished, completed, submitted, sent it → append:
 TASK_DONE
-{"title":"exact task title"}
+{"title":"exact task title from list above"}
 
-FEEDBACK DETECTION — Only use this if: (a) the teammate explicitly asks you to tell the manager something, OR (b) the teammate flags they cannot complete something on time, OR (c) you clearly cannot answer from the task details. Append after your reply:
+If the teammate explicitly says "tell the manager", "ask the manager", "let him know", "inform him", OR says they cannot finish on time → append:
 TASK_FEEDBACK
-{"title":"exact task title matching exactly from your task list","feedback":"brief summary of the question or concern"}
+{"title":"exact task title from list above","feedback":"one sentence summary"}
 
-Only ONE marker per reply. Title must exactly match the task title from your list.`;
+Only ONE marker per reply. Title must be copied exactly from the task list. Do not paraphrase the title.
+If none of the above apply, do not append any marker.`;
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",

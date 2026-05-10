@@ -116,12 +116,14 @@ task_type values:
     const visibleReply = markerIdx !== -1 ? fullReply.slice(0, markerIdx).trim() : fullReply;
 
     // Clear surfaced feedback after manager sees it
-    if (hasFeedback) {
-    await supabaseAdmin.from("manager_tasks")
-    .update({ feedback: null, is_answered: true, updated_at: new Date().toISOString() })
-    .eq("workspace_id", workspaceId)
-    .in("status", ["pending", "in_progress"])
-    .eq("is_answered", false);
+    const lastMessage = messages[messages.length - 1];
+    const managerJustAnswered = hasFeedback && lastMessage?.role === "user";
+    if (managerJustAnswered) {
+      await supabaseAdmin.from("manager_tasks")
+        .update({ feedback: null, is_answered: true, updated_at: new Date().toISOString() })
+        .eq("workspace_id", workspaceId)
+        .in("status", ["pending", "in_progress"])
+        .eq("is_answered", false);
     }
 
     // Parse and save tasks
