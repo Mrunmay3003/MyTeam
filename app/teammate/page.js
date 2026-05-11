@@ -234,12 +234,13 @@ export default function TeammatePage() {
         .maybeSingle();
       console.log("startup workspace check:", ws, wsErr);
 
-      setMyWorkspaceId(ws?.id ?? null);
+      const myWsId = ws?.id ?? null;
+setMyWorkspaceId(myWsId);
 
-      if (ws?.linked_workspace_id && ws?.linked_chat_id) {
-        setWorkspaceId(ws.linked_workspace_id);
-        setChatId(ws.linked_chat_id);
-        await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id);
+if (ws?.linked_workspace_id && ws?.linked_chat_id) {
+  setWorkspaceId(ws.linked_workspace_id);
+  setChatId(ws.linked_chat_id);
+  await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id, myWsId);
       } else {
         setStep("enter_code");
       }
@@ -251,7 +252,7 @@ export default function TeammatePage() {
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages]);
 
-  async function loadAndEnterChat(wsId, chId) {
+  async function loadAndEnterChat(wsId, chId, ownWsId) {
     const res = await fetch("/api/get-workspace-data", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -276,7 +277,7 @@ await fetch("/api/check-scheduled", {
 });
 
 // Register push notifications
-await registerPushNotifications(myWorkspaceId);
+await registerPushNotifications(ownWsId ?? myWorkspaceId);
 
 // Supabase Realtime — live message updates
 const channel = supabase
