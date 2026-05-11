@@ -401,11 +401,13 @@ async function registerPushNotifications(wsId) {
       applicationServerKey: urlBase64ToUint8Array(vapidKey),
     });
 
-    await fetch("/api/save-push-subscription", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId: wsId, subscription }),
-    });
+    const subRes = await fetch("/api/save-push-subscription", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ workspaceId: wsId, subscription }),
+});
+const subJson = await subRes.json();
+console.log("push subscription save result:", subRes.status, subJson);
   } catch (err) {
     console.error("Push registration error:", err);
   }
