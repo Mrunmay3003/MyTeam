@@ -286,17 +286,19 @@ const channel = supabase
     event: "INSERT",
     schema: "public",
     table: "messages",
-    filter: `chat_id=eq.${chId}`,
   }, (payload) => {
+    if (payload.new.chat_id !== chId) return;
     setMessages((prev) => {
       const already = prev.some(m => m.id === payload.new.id);
       if (already) return prev;
       return [...prev, payload.new];
     });
   })
-  .subscribe();
+  .subscribe((status) => {
+  console.log("Realtime subscription status:", status);
+});
 
-// Cleanup on unmount handled by Next.js — store channel ref if needed
+  // Cleanup on unmount handled by Next.js — store channel ref if needed
   }
 
   async function handleCodeSubmit(e) {
