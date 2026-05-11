@@ -276,7 +276,7 @@ await fetch("/api/check-scheduled", {
 });
 
 // Register push notifications
-await registerPushNotifications(wsId);
+await registerPushNotifications(myWorkspaceId);
 
 // Supabase Realtime — live message updates
 const channel = supabase
