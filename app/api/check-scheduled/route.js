@@ -33,8 +33,15 @@ export async function POST(req) {
 
     let triggered = 0;
 
-    for (const prompt of duePrompts) {
-      try {
+    // Mark all due prompts as sent IMMEDIATELY to prevent double-firing
+const dueIds = duePrompts.map(p => p.id);
+await supabaseAdmin
+  .from("scheduled_prompts")
+  .update({ sent: true, sent_at: new Date().toISOString() })
+  .in("id", dueIds);
+
+for (const prompt of duePrompts) {
+  try {
         if (prompt.target_type === "teammate" && prompt.target_id) {
           // Find the chat this belongs to
           const { data: chat } = await supabaseAdmin
@@ -108,12 +115,6 @@ export async function POST(req) {
             });
           }
         }
-
-        // Mark prompt as sent
-        await supabaseAdmin
-          .from("scheduled_prompts")
-          .update({ sent: true, sent_at: new Date().toISOString() })
-          .eq("id", prompt.id);
 
         triggered++;
       } catch (promptErr) {
