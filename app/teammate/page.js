@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { VAPID_PUBLIC_KEY } from "@/lib/config";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function ChevronLeftIcon({ className }) {
@@ -382,7 +383,7 @@ const channel = supabase
     const existing = await reg.pushManager.getSubscription();
     const subscription = existing ?? await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+      applicationServerKey: VAPID_PUBLIC_KEY,
     });
     await fetch("/api/save-push-subscription", {
       method: "POST",

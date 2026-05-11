@@ -10,9 +10,9 @@ const supabaseAdmin = createClient(
 export async function POST(req) {
   try {
     webpush.setVapidDetails(
-    "mailto:mrunmayppawar@gmail.com",
-    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "",
-    process.env.VAPID_PRIVATE_KEY ?? ""
+      "mailto:youremail@example.com",
+      process.env.VAPID_PUBLIC_KEY ?? "",
+      process.env.VAPID_PRIVATE_KEY ?? ""
     );
 
     const { workspaceId } = await req.json();
