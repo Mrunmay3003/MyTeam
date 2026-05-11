@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+const VAPID_PUBLIC_KEY = "BDdWsTie0axPtas7O08_qDr1t_Oemzb6-2t3Pe1gqKM-H6hkcUNZWVSas_zTRQBtb-IS5hFs0k5idlwtwJUHXAo";
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 function ChevronLeftIcon({ className }) {
   return <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>;
@@ -391,8 +393,7 @@ async function registerPushNotifications(wsId) {
       return outputArray;
     }
 
-    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-console.log("vapidKey:", vapidKey);
+    const vapidKey = VAPID_PUBLIC_KEY;
 
     const existing = await reg.pushManager.getSubscription();
     const subscription = existing ?? await reg.pushManager.subscribe({
