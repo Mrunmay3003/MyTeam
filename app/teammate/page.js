@@ -392,6 +392,7 @@ async function registerPushNotifications(wsId) {
     }
 
     const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+console.log("vapidKey:", vapidKey);
 
     const existing = await reg.pushManager.getSubscription();
     const subscription = existing ?? await reg.pushManager.subscribe({
