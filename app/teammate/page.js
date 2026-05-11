@@ -394,7 +394,7 @@ const channel = supabase
 
 const subscription = existing ?? await reg.pushManager.subscribe({
   userVisibleOnly: true,
-  applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+  applicationServerKey: urlBase64ToUint8Array("BDdWsTie0axPtas7008_qDr1t0em..."),
 });
     await fetch("/api/save-push-subscription", {
       method: "POST",
