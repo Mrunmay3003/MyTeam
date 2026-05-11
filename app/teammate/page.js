@@ -274,7 +274,7 @@ await fetch("/api/check-scheduled", {
 });
 
 // Register push notifications
-await registerPushNotifications(myWorkspaceId ?? wsId);
+await registerPushNotifications(wsId);
 
 // Supabase Realtime — live message updates
 const channel = supabase
@@ -373,28 +373,32 @@ const channel = supabase
     }
   }
 
-  async function registerPushNotifications(wsId) {
+async function registerPushNotifications(wsId) {
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
     const reg = await navigator.serviceWorker.register("/sw.js");
     const permission = await Notification.requestPermission();
     if (permission !== "granted") return;
-    const existing = await reg.pushManager.getSubscription();
-    function urlBase64ToUint8Array(base64String) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
 
-const subscription = existing ?? await reg.pushManager.subscribe({
-  userVisibleOnly: true,
-  applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
-});
+    function urlBase64ToUint8Array(base64String) {
+      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
+
+    const existing = await reg.pushManager.getSubscription();
+    const subscription = existing ?? await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey),
+    });
+
     await fetch("/api/save-push-subscription", {
       method: "POST",
       headers: { "content-type": "application/json" },
