@@ -700,6 +700,15 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [router]);
 
+  // Check for due scheduled prompts
+  if (workspaceId) {
+    fetch("/api/check-scheduled", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId }),
+    }).catch(err => console.error("check-scheduled error:", err));
+  }
+
   useEffect(() => {
     function handlePointerDown(e) { if (!menuRef.current?.contains(e.target)) setMenuOpen(false); }
     document.addEventListener("pointerdown", handlePointerDown);

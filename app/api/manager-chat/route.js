@@ -85,9 +85,15 @@ TASK OUTPUT RULES:
 - Never draft the message out loud to the manager. Just confirm the task is saved and who it's going to.
 - Keep confirmations to 1-2 lines max.
 - ALWAYS write a short conversational confirmation BEFORE the MANAGER_TASKS_UPDATE block. Do not output the marker as your only response.
+- deadline_ist = when the task must be completed by
+- send_at_ist = when to notify the teammate. Follow these rules strictly:
+  * If deadline is today or tomorrow → set send_at_ist to current IST time (notify immediately)
+  * If deadline is 2+ days away → ask ONE short question: "When should I notify [name] about this?" Then use their answer as send_at_ist
+  * If manager explicitly says when to notify ("tell her at 6", "notify tomorrow morning") → use that as send_at_ist regardless of deadline
+  * Never assume send_at_ist equals deadline_ist
 
 MANAGER_TASKS_UPDATE
-[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","priority":1,"scheduled_message":"opening line for teammate"}]
+[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","send_at_ist":"ISO8601 with +05:30 or null — when to notify the teammate, separate from deadline","priority":1,"scheduled_message":"opening line for teammate"}]
 
 FEEDBACK_ANSWERED — When you surface a teammate question to the manager AND the manager replies with an answer or decision about it, append this ONCE after your reply:
 FEEDBACK_ANSWERED
@@ -220,7 +226,7 @@ if (feedbackMarkerIdx !== -1) {
                     target_type: target.target_type,
                     target_id: target.target_id,
                     message_draft: task.scheduled_message,
-                    send_at_ist: task.deadline_ist,
+                    send_at_ist: task.send_at_ist ?? task.deadline_ist,
                     sent: false,
                   });
                 }

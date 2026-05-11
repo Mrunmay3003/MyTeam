@@ -266,6 +266,34 @@ export default function TeammatePage() {
     const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
     setAllTeammates(tms);
     setStep("chat");
+    // Check for due scheduled prompts
+await fetch("/api/check-scheduled", {
+  method: "POST",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify({ workspaceId: wsId }),
+});
+
+// Register push notifications
+await registerPushNotifications(myWorkspaceId ?? wsId);
+
+// Supabase Realtime — live message updates
+const channel = supabase
+  .channel(`messages:${chId}`)
+  .on("postgres_changes", {
+    event: "INSERT",
+    schema: "public",
+    table: "messages",
+    filter: `chat_id=eq.${chId}`,
+  }, (payload) => {
+    setMessages((prev) => {
+      const already = prev.some(m => m.id === payload.new.id);
+      if (already) return prev;
+      return [...prev, payload.new];
+    });
+  })
+  .subscribe();
+
+// Cleanup on unmount handled by Next.js — store channel ref if needed
   }
 
   async function handleCodeSubmit(e) {
@@ -344,6 +372,27 @@ export default function TeammatePage() {
       console.error("handleAccept error:", err);
     }
   }
+
+  async function registerPushNotifications(wsId) {
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+    const reg = await navigator.serviceWorker.register("/sw.js");
+    const permission = await Notification.requestPermission();
+    if (permission !== "granted") return;
+    const existing = await reg.pushManager.getSubscription();
+    const subscription = existing ?? await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    });
+    await fetch("/api/save-push-subscription", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId, subscription }),
+    });
+  } catch (err) {
+    console.error("Push registration error:", err);
+  }
+}
 
   async function handleSend() {
     if (!input.trim() || busy) return;
