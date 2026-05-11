@@ -158,6 +158,49 @@ If none of the above apply, do not append any marker.`;
               })
               .eq("workspace_id", workspaceId)
               .eq("title", parsed.title);
+
+            // Directly notify manager — no scheduling needed for feedback
+            const { data: managerChat } = await supabaseAdmin
+              .from("chats")
+              .select("id")
+              .eq("workspace_id", workspaceId)
+              .eq("type", "manager")
+              .maybeSingle();
+
+            if (managerChat) {
+              await supabaseAdmin.from("messages").insert({
+                chat_id: managerChat.id,
+                role: "assistant",
+                content: `⚠ ${chatName} has a question about "${parsed.title}": ${parsed.feedback}`,
+              });
+
+              // Push notification to manager
+              const { data: managerWs } = await supabaseAdmin
+                .from("workspaces")
+                .select("push_subscription")
+                .eq("id", workspaceId)
+                .maybeSingle();
+
+              if (managerWs?.push_subscription) {
+                try {
+                  const webpush = (await import("web-push")).default;
+                  webpush.setVapidDetails(
+                    "mailto:your@email.com",
+                    process.env.VAPID_PUBLIC_KEY ?? "",
+                    process.env.VAPID_PRIVATE_KEY ?? ""
+                  );
+                  await webpush.sendNotification(
+                    managerWs.push_subscription,
+                    JSON.stringify({
+                      title: `Question from ${chatName}`,
+                      body: parsed.feedback.slice(0, 100),
+                    })
+                  );
+                } catch (pushErr) {
+                  console.error("Manager push error:", pushErr);
+                }
+              }
+            }
           }
         }
       } catch (err) { console.error("Action parse error:", err); }

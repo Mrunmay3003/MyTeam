@@ -99,7 +99,6 @@ for (const prompt of duePrompts) {
         }
 
         if (prompt.target_type === "manager") {
-          // Save AI reminder as a message in manager chat
           const { data: managerChat } = await supabaseAdmin
             .from("chats")
             .select("id")
@@ -113,6 +112,27 @@ for (const prompt of duePrompts) {
               role: "assistant",
               content: prompt.message_draft,
             });
+
+            // Send push notification to manager
+            const { data: managerWs } = await supabaseAdmin
+              .from("workspaces")
+              .select("push_subscription")
+              .eq("id", workspaceId)
+              .maybeSingle();
+
+            if (managerWs?.push_subscription) {
+              try {
+                await webpush.sendNotification(
+                  managerWs.push_subscription,
+                  JSON.stringify({
+                    title: "Team update",
+                    body: prompt.message_draft.slice(0, 100),
+                  })
+                );
+              } catch (pushErr) {
+                console.error("Manager push notification error:", pushErr);
+              }
+            }
           }
         }
 

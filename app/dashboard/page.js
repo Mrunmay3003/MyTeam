@@ -16,6 +16,8 @@ const OPENING_MESSAGE = "Hey! Welcome to MyTeam. I am here to help set up your w
 const AUTO_SUMMARY_EXCHANGES = 5;
 const BUSINESS_PROFILE_SAVED_MESSAGE = "✅ Business Profile saved! We will update it from time to time as we discuss here in this Business Context panel.";
 
+const VAPID_PUBLIC_KEY = "BDdWsTie0axPtas7O08_qDr1t_Oemzb6-2t3Pe1gqKM-H6hkcUNZWVSas_zTRQBtb-IS5hFs0k5idlwtwJUHXAo";
+
 function getInitials(name) { return name.slice(0, 2).toUpperCase(); }
 
 function ChevronLeftIcon({ className }) {
@@ -560,6 +562,41 @@ export default function DashboardPage() {
   //settings state
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
 
+  async function registerPushNotifications(wsId) {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
+
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+      }
+
+      const vapidKey = "VAPID_PUBLIC_KEY";
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing ?? await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      await fetch("/api/save-push-subscription", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: wsId, subscription }),
+      });
+    } catch (err) {
+      console.error("Push registration error:", err);
+    }
+  }
+
   async function saveCanvas(action, payload) {
     if (!workspaceId || !userId) return null;
     try {
@@ -700,15 +737,6 @@ export default function DashboardPage() {
     return () => { cancelled = true; };
   }, [router]);
 
-  // Check for due scheduled prompts
-  if (workspaceId) {
-    fetch("/api/check-scheduled", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ workspaceId }),
-    }).catch(err => console.error("check-scheduled error:", err));
-  }
-
   useEffect(() => {
     function handlePointerDown(e) { if (!menuRef.current?.contains(e.target)) setMenuOpen(false); }
     document.addEventListener("pointerdown", handlePointerDown);
@@ -749,6 +777,17 @@ export default function DashboardPage() {
       await loadCanvasNodes(workspace.id);
       // Manager messages load happens in a separate useEffect watching managerNode
       await loadViewport(workspace.id);
+
+      // Check for due scheduled prompts
+      fetch("/api/check-scheduled", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: workspace.id }),
+      }).catch(err => console.error("check-scheduled error:", err));
+
+      // Register push notifications for manager
+      registerPushNotifications(workspace.id);
+
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
@@ -773,6 +812,24 @@ export default function DashboardPage() {
     supabase.from("messages").select("id, role, content, created_at")
       .eq("chat_id", managerNode.id).order("created_at", { ascending: true })
       .then(({ data }) => { if (data) setManagerMessages(data); });
+
+    const channel = supabase
+      .channel(`manager-messages:${managerNode.id}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+      }, (payload) => {
+        if (payload.new.chat_id !== managerNode.id) return;
+        setManagerMessages((prev) => {
+          const already = prev.some(m => m.id === payload.new.id);
+          if (already) return prev;
+          return [...prev, payload.new];
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [managerNode?.id]);
 
   useEffect(() => {
