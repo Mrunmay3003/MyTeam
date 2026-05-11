@@ -148,6 +148,52 @@ if (feedbackMarkerIdx !== -1) {
     .update(updatePayload)
     .eq("workspace_id", workspaceId)
     .eq("title", parsed.title);
+
+  // Notify teammate that manager answered
+  const { data: answeredTask } = await supabaseAdmin
+    .from("manager_tasks")
+    .select("assignee_ids, description, title")
+    .eq("workspace_id", workspaceId)
+    .eq("title", parsed.title)
+    .maybeSingle();
+
+  if (answeredTask?.assignee_ids?.length > 0) {
+    const teammateId = answeredTask.assignee_ids[0];
+    const notifyMsg = `Your manager has answered your question about "${answeredTask.title}". Here's the update: ${parsed.updated_description ?? answeredTask.description}`;
+    
+    await supabaseAdmin.from("messages").insert({
+      chat_id: teammateId,
+      role: "assistant",
+      content: notifyMsg,
+    });
+
+    // Push notification to teammate
+    const { data: teammateWs } = await supabaseAdmin
+      .from("workspaces")
+      .select("push_subscription")
+      .eq("linked_chat_id", teammateId)
+      .maybeSingle();
+
+    if (teammateWs?.push_subscription) {
+      try {
+        const webpushMod = (await import("web-push")).default;
+        webpushMod.setVapidDetails(
+          "mailto:your@email.com",
+          process.env.VAPID_PUBLIC_KEY ?? "",
+          process.env.VAPID_PRIVATE_KEY ?? ""
+        );
+        await webpushMod.sendNotification(
+          teammateWs.push_subscription,
+          JSON.stringify({
+            title: "Manager answered your question",
+            body: notifyMsg.slice(0, 100),
+          })
+        );
+      } catch (pushErr) {
+        console.error("Teammate push error:", pushErr);
+      }
+    }
+  }
 }
   } catch (err) { console.error("Feedback answer parse error:", err); }
 }
