@@ -580,7 +580,7 @@ export default function DashboardPage() {
         return outputArray;
       }
 
-      const vapidKey = "VAPID_PUBLIC_KEY";
+      const vapidKey = VAPID_PUBLIC_KEY;
       const existing = await reg.pushManager.getSubscription();
       const subscription = existing ?? await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -792,7 +792,7 @@ export default function DashboardPage() {
       }).catch(err => {
         console.error("manager push registration failed:", err);
       });
-      
+
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
