@@ -786,8 +786,13 @@ export default function DashboardPage() {
       }).catch(err => console.error("check-scheduled error:", err));
 
       // Register push notifications for manager
-      registerPushNotifications(workspace.id);
-
+      console.log("registering manager push for workspace:", workspace.id);
+      registerPushNotifications(workspace.id).then(() => {
+        console.log("manager push registration complete");
+      }).catch(err => {
+        console.error("manager push registration failed:", err);
+      });
+      
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
