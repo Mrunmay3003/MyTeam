@@ -516,7 +516,19 @@ console.log("push subscription save result:", subRes.status, subJson);
       {/* Header */}
       <header className="flex h-12 shrink-0 items-center border-b border-zinc-800 px-4 justify-between">
         <p className="text-sm font-semibold text-zinc-200">{chatName}</p>
-        <span className="text-xs text-zinc-600">{orgName}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-zinc-600">{orgName}</span>
+          <button
+            type="button"
+            onClick={async () => {
+              await supabase.auth.signOut();
+              router.replace("/auth");
+            }}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+          >
+            Log out
+          </button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1">
