@@ -269,16 +269,10 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
     const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
     setAllTeammates(tms);
-    if (skipNotifStep) {
-      if (Notification.permission === "default") {
-        setStep("enable_notifications");
-      } else {
-        if (Notification.permission === "granted") {
-          await registerPushNotifications(ownWsId ?? wsId);
-        }
-        setStep("chat");
-      }
+    if (Notification.permission === "granted") {
+      await registerPushNotifications(ownWsId ?? wsId);
     }
+    setStep(skipNotifStep && Notification.permission === "default" ? "enable_notifications" : "chat");
     // else step will be set by caller (invite flow)
 
     // Check for due scheduled prompts

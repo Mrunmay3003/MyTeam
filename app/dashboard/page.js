@@ -782,6 +782,8 @@ export default function DashboardPage() {
       // Re-register push for returning managers if already granted
       if (Notification.permission === "granted") {
         registerPushNotifications(workspace.id);
+      } else if (Notification.permission === "default" && !showRolePopup) {
+        setShowManagerNotifPrompt(true);
       }
 
       // Check for due scheduled prompts
