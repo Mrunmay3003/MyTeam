@@ -32,6 +32,7 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
   const initRef = useRef(false);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   const MGR_W = 440;
   const MGR_HEADER_H = 42;
@@ -240,7 +241,7 @@ setMyWorkspaceId(myWsId);
 if (ws?.linked_workspace_id && ws?.linked_chat_id) {
   setWorkspaceId(ws.linked_workspace_id);
   setChatId(ws.linked_chat_id);
-  await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id, myWsId);
+  await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id, myWsId, true);
       } else {
         setStep("enter_code");
       }
@@ -252,7 +253,7 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages]);
 
-  async function loadAndEnterChat(wsId, chId, ownWsId) {
+  async function loadAndEnterChat(wsId, chId, ownWsId, skipNotifStep = false) {
     const res = await fetch("/api/get-workspace-data", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -268,7 +269,9 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
     const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
     setAllTeammates(tms);
-    setStep("chat");
+    if (skipNotifStep) setStep("chat");
+    // else step will be set by caller
+
     // Check for due scheduled prompts
 await fetch("/api/check-scheduled", {
   method: "POST",
@@ -371,8 +374,9 @@ const channel = supabase
     }
 
       console.log("calling loadAndEnterChat", workspaceId, chatId);
-      await loadAndEnterChat(workspaceId, chatId);
+      await loadAndEnterChat(workspaceId, chatId, myWsId ?? myWorkspaceId);
       console.log("done");
+      setStep("enable_notifications");
     } catch (err) {
       console.error("handleAccept error:", err);
     }
@@ -500,6 +504,41 @@ console.log("push subscription save result:", subRes.status, subJson);
     </div>
   );
 
+  if (step === "enable_notifications") return (
+    <div className="flex h-screen items-center justify-center bg-zinc-900 font-sans">
+      <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-8 shadow-2xl shadow-black/60 text-center">
+        <div className="mb-4 flex items-center justify-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          </div>
+        </div>
+        <h2 className="text-lg font-bold text-zinc-100 mb-2">Stay in the loop</h2>
+        <p className="text-sm text-zinc-400 leading-relaxed mb-2">
+          Enable notifications to get instant updates when your manager assigns tasks, sends announcements, or responds to your questions — so nothing slips through.
+        </p>
+        <p className="text-xs text-zinc-600 mb-8">
+          Click <span className="text-zinc-400 font-medium">Allow</span> on the browser popup to enable.
+        </p>
+        <button
+          type="button"
+          onClick={async () => {
+            await registerPushNotifications(myWorkspaceId);
+            setStep("chat"); // will be overridden to enable_notifications if coming from invite flow
+          }}
+          className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white"
+        >
+          Enable Notifications
+        </button>
+        <button
+          type="button"
+          onClick={() => setStep("chat")}
+          className="mt-3 w-full text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+        >
+          Skip for now
+        </button>
+      </div>
+    </div>
+  );
   // ── Main Chat UI ──────────────────────────────────────────────────────────
 
   return (

@@ -91,9 +91,17 @@ TASK OUTPUT RULES:
   * If deadline is 2+ days away → ask ONE short question: "When should I notify [name] about this?" Then use their answer as send_at_ist
   * If manager explicitly says when to notify ("tell her at 6", "notify tomorrow morning") → use that as send_at_ist regardless of deadline
   * Never assume send_at_ist equals deadline_ist
+- When answering a teammate's feedback question, ALWAYS output MANAGER_TASKS_UPDATE with the updated description that includes the answer. Output FEEDBACK_ANSWERED in the same reply, after MANAGER_TASKS_UPDATE.
+- When updating an existing task, always use the EXACT same title as previously confirmed. Never shorten or rephrase it.
+
+STATUS RULES — include "status" field in MANAGER_TASKS_UPDATE only in these cases:
+- Manager says task is done, finished, completed, wrapped up → status: "done"
+- Manager says teammate started, is working on it, has begun → status: "in_progress"
+- Manager updates description, answers a feedback question, or changes any task detail → status: "pending"
+- For brand new tasks being created → omit status field entirely (defaults to pending)
 
 MANAGER_TASKS_UPDATE
-[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","send_at_ist":"ISO8601 with +05:30 or null — when to notify the teammate, separate from deadline","priority":1,"scheduled_message":"opening line for teammate"}]
+[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","send_at_ist":"ISO8601 with +05:30 or null — when to notify the teammate, separate from deadline","priority":1,"scheduled_message":"opening line for teammate","status":"pending — only change this if manager explicitly says done/complete/finished for this task, otherwise omit"}]
 
 FEEDBACK_ANSWERED — When you surface a teammate question to the manager AND the manager replies with an answer or decision about it, append this ONCE after your reply:
 FEEDBACK_ANSWERED
@@ -230,12 +238,12 @@ if (feedbackMarkerIdx !== -1) {
             if (existing) {
               // UPDATE existing task
               const updateData = {
-                description: task.description,
-                deadline_ist: task.deadline_ist ?? null,
-                priority: task.priority ?? 3,
-                status: "pending",
-                updated_at: new Date().toISOString(),
-              };
+  description: task.description,
+  deadline_ist: task.deadline_ist ?? null,
+  priority: task.priority ?? 3,
+  updated_at: new Date().toISOString(),
+};
+if (task.status === "done") updateData.status = "done";
               if (assigneeIds) updateData.assignee_ids = assigneeIds;
               await supabaseAdmin.from("manager_tasks").update(updateData).eq("id", existing.id);
               tasksCreated++;

@@ -545,6 +545,8 @@ export default function DashboardPage() {
   const viewportSaveTimer = useRef(null);
   const mgrSizeSaveTimer = useRef(null);
 
+  const [showManagerNotifPrompt, setShowManagerNotifPrompt] = useState(false);
+
   // Manager chat state
   const [managerMessages, setManagerMessages] = useState([]);
   const [managerInput, setManagerInput] = useState("");
@@ -785,13 +787,12 @@ export default function DashboardPage() {
         body: JSON.stringify({ workspaceId: workspace.id }),
       }).catch(err => console.error("check-scheduled error:", err));
 
-      // Register push notifications for manager
-      console.log("registering manager push for workspace:", workspace.id);
-      registerPushNotifications(workspace.id).then(() => {
-        console.log("manager push registration complete");
-      }).catch(err => {
-        console.error("manager push registration failed:", err);
-      });
+      // Show notification prompt if not yet granted
+      if (Notification.permission === "default") {
+        setShowManagerNotifPrompt(true);
+      } else if (Notification.permission === "granted") {
+        registerPushNotifications(workspace.id);
+      }
 
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
@@ -1153,6 +1154,39 @@ export default function DashboardPage() {
   return (
       <>
       {showRolePopup && <RoleSelectPopup onSelect={handleRoleSelect} />}
+      {showManagerNotifPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-700 bg-zinc-900 p-8 shadow-2xl shadow-black/70 text-center">
+            <div className="mb-4 flex items-center justify-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-zinc-800 border border-zinc-700">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              </div>
+            </div>
+            <h2 className="text-lg font-bold text-zinc-100 mb-2">Team updates, instantly</h2>
+            <p className="text-sm text-zinc-400 leading-relaxed mb-2">
+              Get notified the moment a teammate raises a question or flags a concern — so you can keep things moving without checking in manually.
+            </p>
+            <p className="text-xs text-zinc-600 mb-8">Click <span className="text-zinc-400 font-medium">Allow</span> on the browser popup to enable.</p>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowManagerNotifPrompt(false);
+                await registerPushNotifications(workspaceId);
+              }}
+              className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white"
+            >
+              Enable Notifications
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowManagerNotifPrompt(false)}
+              className="mt-3 w-full text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              Skip for now
+            </button>
+          </div>
+        </div>
+      )}
       {showOrgCodeSetup && (
     <OrgCodeSetupModal
       onClose={() => setShowOrgCodeSetup(false)}
