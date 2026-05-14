@@ -271,8 +271,17 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     setAllTeammates(tms);
     if (Notification.permission === "granted") {
       await registerPushNotifications(ownWsId ?? wsId);
+      setStep("chat");
+    } else if (Notification.permission === "denied") {
+      setStep("chat");
+    } else {
+      // default — never chosen, returning user
+      if (skipNotifStep) {
+        setStep("enable_notifications");
+      } else {
+        setStep("chat");
+      }
     }
-    setStep(skipNotifStep && Notification.permission === "default" ? "enable_notifications" : "chat");
     // else step will be set by caller (invite flow)
 
     // Check for due scheduled prompts
