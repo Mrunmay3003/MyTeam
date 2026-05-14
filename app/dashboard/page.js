@@ -779,6 +779,10 @@ export default function DashboardPage() {
       await loadCanvasNodes(workspace.id);
       // Manager messages load happens in a separate useEffect watching managerNode
       await loadViewport(workspace.id);
+      // Re-register push for returning managers if already granted
+      if (Notification.permission === "granted") {
+        registerPushNotifications(workspace.id);
+      }
 
       // Check for due scheduled prompts
       fetch("/api/check-scheduled", {
@@ -786,13 +790,6 @@ export default function DashboardPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ workspaceId: workspace.id }),
       }).catch(err => console.error("check-scheduled error:", err));
-
-      // Show notification prompt if not yet granted
-      if (Notification.permission === "default") {
-        setShowManagerNotifPrompt(true);
-      } else if (Notification.permission === "granted") {
-        registerPushNotifications(workspace.id);
-      }
 
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
@@ -1065,22 +1062,28 @@ export default function DashboardPage() {
   }
 
   async function handleRoleSelect(role) {
-  setShowRolePopup(false);
-  setRoleSelected(true);
-  await fetch("/api/save-canvas", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "set_role",
-      workspaceId,
-      userId,
-      payload: { role },
-    }),
-  });
-  if (role === "teammate") {
-    router.replace("/teammate");
+    setShowRolePopup(false);
+    setRoleSelected(true);
+    await fetch("/api/save-canvas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "set_role",
+        workspaceId,
+        userId,
+        payload: { role },
+      }),
+    });
+    if (role === "teammate") {
+      router.replace("/teammate");
+    } else if (role === "manager") {
+      if (Notification.permission === "default") {
+        setShowManagerNotifPrompt(true);
+      } else if (Notification.permission === "granted") {
+        registerPushNotifications(workspaceId);
+      }
+    }
   }
-}
 
   function toggleManagerChat() {
     setManagerNode((prev) => {

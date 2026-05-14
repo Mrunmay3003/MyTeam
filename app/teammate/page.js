@@ -373,10 +373,10 @@ const channel = supabase
       });
     }
 
-      console.log("calling loadAndEnterChat", workspaceId, chatId);
-      await loadAndEnterChat(workspaceId, chatId, myWsId ?? myWorkspaceId);
-      console.log("done");
       setStep("enable_notifications");
+      console.log("calling loadAndEnterChat", workspaceId, chatId);
+      await loadAndEnterChat(workspaceId, chatId, myWsId ?? myWorkspaceId, false);
+      console.log("done");
     } catch (err) {
       console.error("handleAccept error:", err);
     }
@@ -522,8 +522,8 @@ console.log("push subscription save result:", subRes.status, subJson);
         <button
           type="button"
           onClick={async () => {
-            await registerPushNotifications(myWorkspaceId);
-            setStep("chat"); // will be overridden to enable_notifications if coming from invite flow
+            await registerPushNotifications(myWorkspaceId ?? myWsId);
+            setStep("chat");
           }}
           className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white"
         >
