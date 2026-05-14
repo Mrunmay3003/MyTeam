@@ -291,9 +291,6 @@ await fetch("/api/check-scheduled", {
   body: JSON.stringify({ workspaceId: wsId }),
 });
 
-// Register push notifications
-await registerPushNotifications(ownWsId ?? myWorkspaceId);
-
 // Supabase Realtime — live message updates
 const channel = supabase
   .channel(`messages:${chId}`)
