@@ -269,8 +269,17 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
     const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
     setAllTeammates(tms);
-    if (skipNotifStep) setStep("chat");
-    // else step will be set by caller
+    if (skipNotifStep) {
+      if (Notification.permission === "default") {
+        setStep("enable_notifications");
+      } else {
+        if (Notification.permission === "granted") {
+          await registerPushNotifications(ownWsId ?? wsId);
+        }
+        setStep("chat");
+      }
+    }
+    // else step will be set by caller (invite flow)
 
     // Check for due scheduled prompts
 await fetch("/api/check-scheduled", {
@@ -512,7 +521,7 @@ console.log("push subscription save result:", subRes.status, subJson);
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </div>
         </div>
-        <h2 className="text-lg font-bold text-zinc-100 mb-2">Stay in the loop</h2>
+        <h2 className="text-lg font-bold text-zinc-100 mb-2">Stay On Track</h2>
         <p className="text-sm text-zinc-400 leading-relaxed mb-2">
           Enable notifications to get instant updates when your manager assigns tasks, sends announcements, or responds to your questions — so nothing slips through.
         </p>
