@@ -1442,7 +1442,7 @@ export default function DashboardPage() {
   </div>
 
   {contextOpen && businessProfileOpen && businessMemory && (
-    <div className="border-b border-zinc-800 overflow-y-auto" style={{ maxHeight: "40%" }}>
+    <div className="absolute top-10 left-1 right-0 bottom-0 z-20 overflow-y-auto bg-zinc-900 border-l border-zinc-800">
       <div className="p-3 space-y-3">
         {Object.entries(businessMemory).map(([key, value]) => (
           <div key={key}>
