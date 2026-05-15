@@ -510,7 +510,7 @@ export default function DashboardPage() {
 
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [contextOpen, setContextOpen] = useState(true);
-  const [contextWidth, setContextWidth] = useState(600);
+  const [contextWidth, setContextWidth] = useState(320);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [modalType, setModalType] = useState(null);
@@ -1442,7 +1442,7 @@ export default function DashboardPage() {
   </div>
 
   {contextOpen && businessProfileOpen && businessMemory && (
-    <div className="absolute top-10 inset-x-0 bottom-0 z-20 overflow-y-auto bg-zinc-900">
+    <div className="absolute top-10 right-0 bottom-0 z-20 overflow-y-auto bg-zinc-900 border-l border-zinc-800" style={{ width: "280px" }}>
       <div className="p-3 space-y-3">
         {Object.entries(businessMemory).map(([key, value]) => (
           <div key={key}>
