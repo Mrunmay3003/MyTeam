@@ -163,6 +163,34 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
 }
 
 // ── Business Profile Panel ────────────────────────────────────────────────────
+function renderValue(value) {
+  if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
+    return (
+      <ul className="space-y-1">
+        {value.map((v, i) => (
+          <li key={i} className="text-xs text-zinc-300">
+            • {typeof v === "object" && v !== null
+              ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(", ")
+              : String(v)}
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <ul className="space-y-1">
+        {Object.entries(value).map(([k, v]) => (
+          <li key={k} className="text-xs text-zinc-300">• {k}: {String(v)}</li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className="text-xs text-zinc-300 leading-relaxed">{String(value)}</p>;
+}
+
 function BusinessProfile({ memory }) {
   if (!memory) return <p className="p-4 text-xs text-zinc-600">No business profile available yet.</p>;
 
@@ -173,13 +201,7 @@ function BusinessProfile({ memory }) {
       {entries ? entries.map(([key, value]) => (
         <div key={key}>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-1">{key.replace(/_/g, " ")}</p>
-          {Array.isArray(value) ? (
-            <ul className="space-y-0.5">
-              {value.map((v, i) => <li key={i} className="text-xs text-zinc-300">• {String(v)}</li>)}
-            </ul>
-          ) : (
-            <p className="text-xs text-zinc-300 leading-relaxed">{String(value)}</p>
-          )}
+          {renderValue(value)}
         </div>
       )) : (
         <p className="text-xs text-zinc-400 whitespace-pre-wrap">{String(memory)}</p>

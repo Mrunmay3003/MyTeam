@@ -563,6 +563,36 @@ export default function DashboardPage() {
 
   //settings state
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [businessProfileOpen, setBusinessProfileOpen] = useState(false);
+  const [businessMemory, setBusinessMemory] = useState(null);
+
+  function renderValue(value) {
+    if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
+    if (Array.isArray(value)) {
+      if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
+      return (
+        <ul className="space-y-1">
+          {value.map((v, i) => (
+            <li key={i} className="text-xs text-zinc-300">
+              • {typeof v === "object" && v !== null
+                ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(", ")
+                : String(v)}
+            </li>
+          ))}
+        </ul>
+      );
+    }
+    if (typeof value === "object") {
+      return (
+        <ul className="space-y-1">
+          {Object.entries(value).map(([k, v]) => (
+            <li key={k} className="text-xs text-zinc-300">• {k}: {String(v)}</li>
+          ))}
+        </ul>
+      );
+    }
+    return <p className="text-xs text-zinc-300 leading-relaxed">{String(value)}</p>;
+  }
 
   async function registerPushNotifications(wsId) {
     try {
@@ -779,6 +809,13 @@ export default function DashboardPage() {
       await loadCanvasNodes(workspace.id);
       // Manager messages load happens in a separate useEffect watching managerNode
       await loadViewport(workspace.id);
+      // Load business memory for profile card
+      const { data: bizMem } = await supabase
+        .from("business_memory")
+        .select("content")
+        .eq("workspace_id", workspace.id)
+        .maybeSingle();
+      if (bizMem?.content) setBusinessMemory(bizMem.content);
       // Re-register push for returning managers if already granted
       if (Notification.permission === "granted") {
         registerPushNotifications(workspace.id);
@@ -1380,48 +1417,74 @@ export default function DashboardPage() {
           </main>
 
           <aside style={{ width: contextOpen ? `${contextWidth}px` : "44px" }} className="relative flex shrink-0 flex-col border-l border-zinc-800 bg-zinc-900 transition-[width] duration-200 ease-out">
-            {contextOpen && <div onMouseDown={startContextResize} className="absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 hover:bg-zinc-600/60 transition-colors" />}
-            <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
-              {contextOpen ? (
-                <>
-                  <h2 className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Context</h2>
-                  <button type="button" onClick={() => setContextOpen(false)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><ChevronRightIcon /></button>
-                </>
-              ) : (
-                <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"><ChevronLeftIcon /></button>
-              )}
+  {contextOpen && <div onMouseDown={startContextResize} className="absolute left-0 top-0 h-full w-1 cursor-col-resize z-10 hover:bg-zinc-600/60 transition-colors" />}
+  <div className="flex h-10 shrink-0 items-center justify-between border-b border-zinc-800 px-2">
+    {contextOpen ? (
+      <>
+        <h2 className="truncate px-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Context</h2>
+        <div className="flex items-center gap-1">
+          {businessMemory && (
+            <button
+              type="button"
+              onClick={() => setBusinessProfileOpen(o => !o)}
+              title="Business Profile"
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors ${businessProfileOpen ? "bg-zinc-800 text-zinc-300" : ""}`}
+            >
+              <ChevronDownIcon className={`transition-transform duration-200 ${businessProfileOpen ? "rotate-180" : ""}`} />
+            </button>
+          )}
+          <button type="button" onClick={() => { setContextOpen(false); setBusinessProfileOpen(false); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"><ChevronRightIcon /></button>
+        </div>
+      </>
+    ) : (
+      <button type="button" onClick={() => setContextOpen(true)} className="flex h-full w-full items-center justify-center text-zinc-500 hover:bg-zinc-800/60 hover:text-zinc-300"><ChevronLeftIcon /></button>
+    )}
+  </div>
+
+  {contextOpen && businessProfileOpen && businessMemory && (
+    <div className="border-b border-zinc-800 overflow-y-auto" style={{ maxHeight: "40%" }}>
+      <div className="p-3 space-y-3">
+        {Object.entries(businessMemory).map(([key, value]) => (
+          <div key={key}>
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-1">{key.replace(/_/g, " ")}</p>
+            {renderValue(value)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+
+  {contextOpen && (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+        {onboardingMessages.map((message, index) => {
+          const key = message.id ?? `${message.role}-${index}`;
+          const assistant = message.role === "assistant";
+          return (
+            <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
+              {message.content}
             </div>
-            {contextOpen && (
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
-                  {onboardingMessages.map((message, index) => {
-                    const key = message.id ?? `${message.role}-${index}`;
-                    const assistant = message.role === "assistant";
-                    return (
-                      <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
-                        {message.content}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="shrink-0 border-t border-zinc-800 p-3">
-                  {onboardingError && <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>}
-                  {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current && (
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-[11px] text-zinc-500">{remainingExchanges} exchanges before auto-summary</p>
-                      {onboardingUserMessageCount >= 2 && (
-                        <button type="button" onClick={() => void handleSummariseNowClick()} disabled={onboardingBusy || summariseConfirmLoading} className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50">Summarise Now</button>
-                      )}
-                    </div>
-                  )}
-                  <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
-                    <input type="text" value={onboardingInput} onChange={(e) => setOnboardingInput(e.target.value)} placeholder="Reply..." disabled={onboardingBusy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50" />
-                    <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">Send</button>
-                  </form>
-                </div>
-              </div>
+          );
+        })}
+      </div>
+      <div className="shrink-0 border-t border-zinc-800 p-3">
+        {onboardingError && <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>}
+        {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current && (
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] text-zinc-500">{remainingExchanges} exchanges before auto-summary</p>
+            {onboardingUserMessageCount >= 2 && (
+              <button type="button" onClick={() => void handleSummariseNowClick()} disabled={onboardingBusy || summariseConfirmLoading} className="rounded-md border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-200 transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50">Summarise Now</button>
             )}
-          </aside>
+          </div>
+        )}
+        <form onSubmit={handleOnboardingSubmit} className="flex gap-2">
+          <input type="text" value={onboardingInput} onChange={(e) => setOnboardingInput(e.target.value)} placeholder="Reply..." disabled={onboardingBusy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 disabled:opacity-50" />
+          <button type="submit" disabled={onboardingBusy || !onboardingInput.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-50">Send</button>
+        </form>
+      </div>
+    </div>
+  )}
+</aside>
         </div>
       </div>
     </>
