@@ -81,7 +81,7 @@ TASK OUTPUT RULES:
 - If any of these are missing, ask ONE short question to get the missing info. Do NOT save yet.
 - Once you have everything confirmed in the conversation, output the block ONCE.
 - When manager clarifies something mid-conversation, UPDATE the existing task silently — do not ask again.
-- Never question who the manager assigns a task to. If they say "Satyen", assign to Satyen. Period.
+- Never question who the manager assigns a task to. If they say a name, assign to that person. During discussions, you may recommend the manager about assigning different tasks to respective members who usually work on those tasks based on previous chats.
 - Never draft the message out loud to the manager. Just confirm the task is saved and who it's going to.
 - Keep confirmations to 1-2 lines max.
 - ALWAYS write a short conversational confirmation BEFORE the MANAGER_TASKS_UPDATE block. Do not output the marker as your only response.
@@ -91,7 +91,6 @@ TASK OUTPUT RULES:
   * If deadline is 2+ days away → ask ONE short question: "When should I notify [name] about this?" Then use their answer as send_at_ist
   * If manager explicitly says when to notify ("tell her at 6", "notify tomorrow morning") → use that as send_at_ist regardless of deadline
   * Never assume send_at_ist equals deadline_ist
-- When answering a teammate's feedback question, ALWAYS output MANAGER_TASKS_UPDATE with the updated description that includes the answer. Output FEEDBACK_ANSWERED in the same reply, after MANAGER_TASKS_UPDATE.
 - When updating an existing task, always use the EXACT same title as previously confirmed. Never shorten or rephrase it.
 
 STATUS RULES — include "status" field in MANAGER_TASKS_UPDATE only in these cases:
@@ -101,15 +100,13 @@ STATUS RULES — include "status" field in MANAGER_TASKS_UPDATE only in these ca
 - For brand new tasks being created → omit status field entirely (defaults to pending)
 
 MANAGER_TASKS_UPDATE
-[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","send_at_ist":"ISO8601 with +05:30 or null — when to notify the teammate, separate from deadline","priority":1,"scheduled_message":"opening line for teammate","status":"pending — only change this if manager explicitly says done/complete/finished for this task, otherwise omit"}]
+[{"title":"short label","description":"full details","task_type":"teammate_task","assignee_name":"exact name from list or null","deadline_ist":"ISO8601 with +05:30 or null","send_at_ist":"ISO8601 with +05:30 or null — when to notify the teammate, separate from deadline","priority":1,"scheduled_message":"opening line for teammate","status":"only include if explicitly changing status — done, in_progress, or pending"}]
 
 FEEDBACK_ANSWERED — When you surface a teammate question to the manager AND the manager replies with an answer or decision about it, append this ONCE after your reply:
 FEEDBACK_ANSWERED
-{"title":"exact task title","updated_description":"full original description plus the manager's answer appended"}
+{"title":"exact task title the feedback was about","updated_description":"original task description with ONLY the manager's answer appended as a short note at the end. Do NOT rewrite or summarise the full description. Example: if original is 'Design a logo' and manager says 'make it blue', output: 'Design a logo. Manager note: make it blue.'"}
 
-- When answering a teammate's question, ALWAYS output MANAGER_TASKS_UPDATE with the updated description that includes the answer. Output FEEDBACK_ANSWERED in the same reply, after MANAGER_TASKS_UPDATE.
-
-Do not append this when you are asking the question. Only append it after the manager has given a response.
+Do not append FEEDBACK_ANSWERED when you are asking the question. Only append it after the manager has given a response. You do NOT need to also output MANAGER_TASKS_UPDATE when answering feedback — FEEDBACK_ANSWERED handles the description update.
 
 task_type values:
 - teammate_task: one specific person
@@ -136,75 +133,82 @@ task_type values:
     const fullReply = data.content?.[0]?.text ?? "";
 
     const marker = "MANAGER_TASKS_UPDATE";
-const feedbackMarker = "FEEDBACK_ANSWERED";
-const markerIdx = fullReply.indexOf(marker);
-const feedbackAnsweredIdx = fullReply.indexOf(feedbackMarker);
-const allMarkerIdxs = [markerIdx, feedbackAnsweredIdx].filter(idx => idx !== -1);
-const firstMarkerIdx = allMarkerIdxs.length > 0 ? Math.min(...allMarkerIdxs) : -1;
-const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
+    const feedbackMarker = "FEEDBACK_ANSWERED";
+    const markerIdx = fullReply.indexOf(marker);
+    const feedbackAnsweredIdx = fullReply.indexOf(feedbackMarker);
+    const allMarkerIdxs = [markerIdx, feedbackAnsweredIdx].filter(idx => idx !== -1);
+    const firstMarkerIdx = allMarkerIdxs.length > 0 ? Math.min(...allMarkerIdxs) : -1;
+    const visibleReply = firstMarkerIdx !== -1 ? fullReply.slice(0, firstMarkerIdx).trim() : fullReply;
 
-const feedbackMarkerIdx = fullReply.indexOf(feedbackMarker);
-if (feedbackMarkerIdx !== -1) {
-  try {
-    const raw = fullReply.slice(feedbackMarkerIdx + feedbackMarker.length).trim();
-    const s = raw.indexOf("{"); const e = raw.lastIndexOf("}");
-    if (s !== -1 && e !== -1) {
-  const parsed = JSON.parse(raw.slice(s, e + 1));
-  const updatePayload = { feedback: null, is_answered: true, updated_at: new Date().toISOString() };
-  if (parsed.updated_description) updatePayload.description = parsed.updated_description;
-  await supabaseAdmin.from("manager_tasks")
-    .update(updatePayload)
-    .eq("workspace_id", workspaceId)
-    .eq("title", parsed.title);
-
-  // Notify teammate that manager answered
-  const { data: answeredTask } = await supabaseAdmin
-    .from("manager_tasks")
-    .select("assignee_ids, description, title")
-    .eq("workspace_id", workspaceId)
-    .eq("title", parsed.title)
-    .maybeSingle();
-
-  if (answeredTask?.assignee_ids?.length > 0) {
-    const teammateId = answeredTask.assignee_ids[0];
-    const notifyMsg = `Your manager has answered your question about "${answeredTask.title}". Here's the update: ${parsed.updated_description ?? answeredTask.description}`;
-    
-    await supabaseAdmin.from("messages").insert({
-      chat_id: teammateId,
-      role: "assistant",
-      content: notifyMsg,
-    });
-
-    // Push notification to teammate
-    const { data: teammateWs } = await supabaseAdmin
-      .from("workspaces")
-      .select("push_subscription")
-      .eq("linked_chat_id", teammateId)
-      .maybeSingle();
-
-    if (teammateWs?.push_subscription) {
+    // Handle FEEDBACK_ANSWERED
+    const feedbackMarkerIdx = fullReply.indexOf(feedbackMarker);
+    if (feedbackMarkerIdx !== -1) {
       try {
-        const webpushMod = (await import("web-push")).default;
-        webpushMod.setVapidDetails(
-          "mailto:your@email.com",
-          process.env.VAPID_PUBLIC_KEY ?? "",
-          process.env.VAPID_PRIVATE_KEY ?? ""
-        );
-        await webpushMod.sendNotification(
-          teammateWs.push_subscription,
-          JSON.stringify({
-            title: "Manager answered your question",
-            body: notifyMsg.slice(0, 100),
-          })
-        );
-      } catch (pushErr) {
-        console.error("Teammate push error:", pushErr);
-      }
+        const raw = fullReply.slice(feedbackMarkerIdx + feedbackMarker.length).trim();
+        const s = raw.indexOf("{"); const e = raw.lastIndexOf("}");
+        if (s !== -1 && e !== -1) {
+          const parsed = JSON.parse(raw.slice(s, e + 1));
+
+          // Fetch task BEFORE update to check if feedback was pending
+          const { data: taskBeforeUpdate } = await supabaseAdmin
+            .from("manager_tasks")
+            .select("assignee_ids, description, title, is_answered, feedback")
+            .eq("workspace_id", workspaceId)
+            .eq("title", parsed.title)
+            .maybeSingle();
+
+          const hadPendingFeedback = taskBeforeUpdate?.is_answered === false && taskBeforeUpdate?.feedback;
+
+          // Update task — keep feedback until teammate AI clears it
+          const updatePayload = { is_answered: true, updated_at: new Date().toISOString() };
+          if (parsed.updated_description) updatePayload.description = parsed.updated_description;
+          await supabaseAdmin.from("manager_tasks")
+            .update(updatePayload)
+            .eq("workspace_id", workspaceId)
+            .eq("title", parsed.title);
+
+          // Notify teammate
+          if (taskBeforeUpdate?.assignee_ids?.length > 0) {
+            const teammateId = taskBeforeUpdate.assignee_ids[0];
+            const notifyMsg = hadPendingFeedback
+              ? `Your manager has answered your question about "${taskBeforeUpdate.title}". Here's the update: ${parsed.updated_description ?? taskBeforeUpdate.description}`
+              : `Your manager has updated the task "${taskBeforeUpdate.title}". Here's what changed: ${parsed.updated_description ?? taskBeforeUpdate.description}`;
+
+            await supabaseAdmin.from("messages").insert({
+              chat_id: teammateId,
+              role: "assistant",
+              content: notifyMsg,
+            });
+
+            const { data: teammateWs } = await supabaseAdmin
+              .from("workspaces")
+              .select("push_subscription")
+              .eq("linked_chat_id", teammateId)
+              .maybeSingle();
+
+            if (teammateWs?.push_subscription) {
+              try {
+                const webpushMod = (await import("web-push")).default;
+                webpushMod.setVapidDetails(
+                  "mailto:your@email.com",
+                  process.env.VAPID_PUBLIC_KEY ?? "",
+                  process.env.VAPID_PRIVATE_KEY ?? ""
+                );
+                await webpushMod.sendNotification(
+                  teammateWs.push_subscription,
+                  JSON.stringify({
+                    title: hadPendingFeedback ? "Manager answered your question" : "Task updated by manager",
+                    body: notifyMsg.slice(0, 100),
+                  })
+                );
+              } catch (pushErr) {
+                console.error("Teammate push error:", pushErr);
+              }
+            }
+          }
+        }
+      } catch (err) { console.error("Feedback answer parse error:", err); }
     }
-  }
-}
-  } catch (err) { console.error("Feedback answer parse error:", err); }
-}
 
     // Parse and save tasks
     let tasksCreated = 0;
@@ -216,7 +220,6 @@ if (feedbackMarkerIdx !== -1) {
           const taskArray = JSON.parse(raw.slice(s, e + 1));
 
           for (const task of taskArray) {
-            // Fuzzy assignee match
             let assigneeIds = null;
             if (task.assignee_name && task.task_type === "teammate_task") {
               const match = teammates.find(t =>
@@ -227,7 +230,6 @@ if (feedbackMarkerIdx !== -1) {
 
             console.log("assignee match attempt:", { assignee_name: task.assignee_name, teammates: teammates.map(t => t.name), matched: assigneeIds });
 
-            // Check if task with same title already exists — UPDATE instead of INSERT
             const { data: existing } = await supabaseAdmin
               .from("manager_tasks")
               .select("id")
@@ -236,19 +238,55 @@ if (feedbackMarkerIdx !== -1) {
               .maybeSingle();
 
             if (existing) {
-              // UPDATE existing task
               const updateData = {
-  description: task.description,
-  deadline_ist: task.deadline_ist ?? null,
-  priority: task.priority ?? 3,
-  updated_at: new Date().toISOString(),
-};
-if (task.status === "done") updateData.status = "done";
+                description: task.description,
+                deadline_ist: task.deadline_ist ?? null,
+                priority: task.priority ?? 3,
+                updated_at: new Date().toISOString(),
+              };
+              if (task.status === "done") updateData.status = "done";
+              else if (task.status === "in_progress") updateData.status = "in_progress";
+              else if (task.status === "pending") updateData.status = "pending";
               if (assigneeIds) updateData.assignee_ids = assigneeIds;
               await supabaseAdmin.from("manager_tasks").update(updateData).eq("id", existing.id);
               tasksCreated++;
+
+              // Notify teammate of description update via MANAGER_TASKS_UPDATE
+              if (assigneeIds?.length > 0 && task.description) {
+                const notifyMsg = `Your manager has updated the task "${task.title}". Here's what changed: ${task.description}`;
+                await supabaseAdmin.from("messages").insert({
+                  chat_id: assigneeIds[0],
+                  role: "assistant",
+                  content: notifyMsg,
+                });
+
+                const { data: teammateWs } = await supabaseAdmin
+                  .from("workspaces")
+                  .select("push_subscription")
+                  .eq("linked_chat_id", assigneeIds[0])
+                  .maybeSingle();
+
+                if (teammateWs?.push_subscription) {
+                  try {
+                    const webpushMod = (await import("web-push")).default;
+                    webpushMod.setVapidDetails(
+                      "mailto:your@email.com",
+                      process.env.VAPID_PUBLIC_KEY ?? "",
+                      process.env.VAPID_PRIVATE_KEY ?? ""
+                    );
+                    await webpushMod.sendNotification(
+                      teammateWs.push_subscription,
+                      JSON.stringify({
+                        title: "Task updated by manager",
+                        body: notifyMsg.slice(0, 100),
+                      })
+                    );
+                  } catch (pushErr) {
+                    console.error("Task update push error:", pushErr);
+                  }
+                }
+              }
             } else {
-              // INSERT new task
               const { data: inserted, error: insertErr } = await supabaseAdmin
                 .from("manager_tasks")
                 .insert({
@@ -267,7 +305,7 @@ if (task.status === "done") updateData.status = "done";
               if (insertErr) { console.error("Task insert error:", insertErr); continue; }
               tasksCreated++;
 
-              if (task.deadline_ist && task.scheduled_message && inserted) {
+              if (task.send_at_ist && task.scheduled_message && inserted) {
                 const targets =
                   task.task_type === "broadcast_task" ? teammates.map(t => ({ target_type: "teammate", target_id: t.id })) :
                   task.task_type === "ai_reminder" ? [{ target_type: "manager", target_id: null }] :
@@ -280,7 +318,7 @@ if (task.status === "done") updateData.status = "done";
                     target_type: target.target_type,
                     target_id: target.target_id,
                     message_draft: task.scheduled_message,
-                    send_at_ist: task.send_at_ist ?? task.deadline_ist,
+                    send_at_ist: task.send_at_ist,
                     sent: false,
                   });
                 }

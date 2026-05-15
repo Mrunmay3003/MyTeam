@@ -1022,10 +1022,9 @@ export default function DashboardPage() {
     const replyText = payload.reply || "✓ Task saved.";
     console.log("debug teammates from server:", payload.debug_teammates);
 
-    const asstIns = await supabase.from("messages")
-      .insert({ chat_id: managerNode.id, role: "assistant", content: replyText })
-      .select("id, role, content, created_at").single();
-    if (!asstIns.error) setManagerMessages(prev => [...prev, asstIns.data]);
+    await supabase.from("messages")
+      .insert({ chat_id: managerNode.id, role: "assistant", content: replyText });
+    // Message will appear via Realtime subscription — don't add manually
 
     setManagerBusy(false);
   }, [managerNode, workspaceId, managerBusy, managerMessages, teammates]);

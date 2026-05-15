@@ -44,8 +44,17 @@ console.log("task query result:", { chatId, workspaceId, tasks, taskCount: tasks
           let feedbackNote = "";
 if (t.is_answered === false) {
   feedbackNote = `\n⚠ PENDING MANAGER RESPONSE: A question was raised about this task ("${t.feedback}"). The manager has NOT answered yet. If asked about this, say the manager has been informed and you are waiting for their response. Do NOT try to answer from the description.`;
-} else if (t.is_answered === true) {
-  feedbackNote = `\n✅ MANAGER HAS ANSWERED: The manager has clarified this task. The description above has been updated with their answer. When the teammate asks, explicitly confirm the manager responded and state the relevant detail from the description directly in your reply.`;
+} else if (t.is_answered === true && t.feedback) {
+  feedbackNote = `\n✅ MANAGER HAS ANSWERED: The teammate previously asked: "${t.feedback}". The manager has now answered — refer to the updated task description above to answer this specific question directly and concisely. After answering, you MUST append this marker to clear the feedback:
+FEEDBACK_CLEARED
+{"title":"${t.title}"}`;
+}
+
+if (fullReply.includes(clearedMarker)) {
+  const idx = fullReply.indexOf(clearedMarker);
+  visibleReply = fullReply.slice(0, idx).trim();
+  actionJson = fullReply.slice(idx + clearedMarker.length).trim();
+  actionType = "feedback_cleared";
 }
 
           return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline}\nDetails: ${t.description}${feedbackNote}`;
@@ -61,6 +70,7 @@ ${tasksContext}
 
 Communicate tasks, deadlines, and instructions from the manager clearly and conversationally.Your behaviour:
 0. ALWAYS refer to the task details injected above for any task-specific information. Never rely on conversation history for task details — the injected details are always more up to date. When continuing a conversation, explicitly reference the current task by name so the teammate knows what you're talking about.
+0b. NEVER start a 'task introduction message' with "Got it", "Sure", "Understood", "Alright" or any acknowledgement phrase (since the user gets the first message from you on their UI). Start directly with the relevant information or task introductory message.
 1. Communicate tasks, deadlines, and instructions from the manager clearly and conversationally.
 2. If the teammate says they are starting or will work on a task, acknowledge it and update your tone accordingly.
 3. If a task is marked ⚠ PENDING MANAGER RESPONSE — do NOT try to answer that question yourself. Tell the teammate the manager has been informed and you are waiting on their response.
@@ -106,12 +116,18 @@ If none of the above apply, do not append any marker.`;
     const doneMarker = "TASK_DONE";
     const feedbackMarker = "TASK_FEEDBACK";
     const inProgressMarker = "TASK_IN_PROGRESS";
+    const clearedMarker = "FEEDBACK_CLEARED";
 
     let visibleReply = fullReply;
     let actionJson = null;
     let actionType = null;
 
-    if (fullReply.includes(inProgressMarker)) {
+    if (fullReply.includes(clearedMarker)) {
+      const idx = fullReply.indexOf(clearedMarker);
+      visibleReply = fullReply.slice(0, idx).trim();
+      actionJson = fullReply.slice(idx + clearedMarker.length).trim();
+      actionType = "feedback_cleared";
+    } else if (fullReply.includes(inProgressMarker)) {
       const idx = fullReply.indexOf(inProgressMarker);
       visibleReply = fullReply.slice(0, idx).trim();
       actionJson = fullReply.slice(idx + inProgressMarker.length).trim();
@@ -134,6 +150,12 @@ If none of the above apply, do not append any marker.`;
         if (s !== -1 && e !== -1) {
           const parsed = JSON.parse(actionJson.slice(s, e + 1));
 
+          if (actionType === "feedback_cleared") {
+            await supabaseAdmin.from("manager_tasks")
+              .update({ feedback: null, updated_at: new Date().toISOString() })
+              .eq("workspace_id", workspaceId)
+              .eq("title", parsed.title);
+          }
           if (actionType === "in_progress") {
             await supabaseAdmin.from("manager_tasks")
               .update({ status: "in_progress", updated_at: new Date().toISOString() })

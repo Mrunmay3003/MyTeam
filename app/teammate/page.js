@@ -455,13 +455,12 @@ console.log("push subscription save result:", subRes.status, subJson);
     const payload = await res.json();
     const replyText = payload.reply || "Something went wrong.";
 
-    const asstRes = await fetch("/api/save-canvas", {
+    await fetch("/api/save-canvas", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ action: "save_message", workspaceId, userId, payload: { chatId, role: "assistant", content: replyText } }),
     });
-    const asstJson = await asstRes.json();
-    if (asstJson.data) setMessages(prev => [...prev, asstJson.data]);
+    // Message will appear via Realtime subscription — don't add manually
     setBusy(false);
   }
 
