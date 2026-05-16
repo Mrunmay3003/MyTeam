@@ -741,7 +741,7 @@ export default function DashboardPage() {
       if (!isResizingRef.current) return;
       const delta = startX - e.clientX;
       const maxWidth = window.innerWidth * 0.5;
-      setContextWidth(Math.min(maxWidth, Math.max(220, startWidth + delta)));
+      setContextWidth(Math.min(maxWidth, Math.max(280, startWidth + delta)));
     }
     function onMouseUp() { isResizingRef.current = false; document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); }
     document.addEventListener("mousemove", onMouseMove);
@@ -1442,8 +1442,11 @@ export default function DashboardPage() {
   </div>
 
   {contextOpen && businessProfileOpen && businessMemory && (
-    <div className="absolute top-10 right-0 bottom-0 z-20 overflow-y-auto bg-zinc-900 border-l border-zinc-800" style={{ width: "280px" }}>
-      <div className="p-3 space-y-3">
+    <div className="absolute top-10 right-0 bottom-0 z-20 flex flex-col bg-zinc-900 border-l border-zinc-800" style={{ width: "280px" }}>
+      <div className="flex h-10 shrink-0 items-center border-b border-zinc-800 px-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Profile</h2>
+      </div>
+      <div className="overflow-y-auto flex-1 p-3 space-y-3">
         {Object.entries(businessMemory).map(([key, value]) => (
           <div key={key}>
             <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-1">{key.replace(/_/g, " ")}</p>
