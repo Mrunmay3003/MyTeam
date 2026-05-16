@@ -33,7 +33,31 @@ export async function POST(request) {
   try {
     const body = await request.json();
     console.log("[/api/chat] incoming request body:", body);
-    const { messages, workspaceId, chatType, forceSummary: forceSummaryFlag } = body ?? {};
+    const { messages, workspaceId, chatType, forceSummary: forceSummaryFlag, detectOnly, userMessage, aiReply } = body ?? {};
+
+    // Detection-only mode — cheap Haiku YES/NO check
+    if (detectOnly && userMessage) {
+      const detRes = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 10,
+          system: "You are a memory detection assistant. Reply with YES or NO only. No other text.",
+          messages: [{
+            role: "user",
+            content: `Did this conversation exchange contain new important business information worth remembering — such as new projects, team changes, goals, products, timelines, strategy decisions, or the user asking to save/remember something?\n\nAI said: "${(aiReply ?? "").slice(0, 500)}"\nUser replied: "${userMessage}"\n\nYES or NO:`
+          }]
+        }),
+      });
+      const detData = await detRes.json();
+      const answer = detData.content?.[0]?.text?.trim().toUpperCase();
+      return Response.json({ detected: answer === "YES" });
+    }
  
     // Fetch business memory from Supabase to inject into system prompt
     let businessMemoryContext = "";

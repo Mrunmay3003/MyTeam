@@ -741,7 +741,7 @@ export default function DashboardPage() {
       if (!isResizingRef.current) return;
       const delta = startX - e.clientX;
       const maxWidth = window.innerWidth * 0.5;
-      setContextWidth(Math.min(maxWidth, Math.max(280, startWidth + delta)));
+      setContextWidth(Math.min(maxWidth, Math.max(285, startWidth + delta)));
     }
     function onMouseUp() { isResizingRef.current = false; document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); }
     document.addEventListener("mousemove", onMouseMove);
@@ -974,6 +974,43 @@ export default function DashboardPage() {
     return true;
   }, [onboardingChatId, workspaceId]);
 
+  const runSemanticMemoryUpdate = useCallback(async (userMessage, aiReply, allMessages) => {
+    if (!workspaceId) return;
+    try {
+      // Send last exchange to Haiku for YES/NO detection
+      const detectionResponse = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ detectOnly: true, userMessage, aiReply, workspaceId }),
+      });
+      const detectionData = await detectionResponse.json();
+      if (!detectionData.detected) return;
+
+      // YES — trigger silent memory update
+      const updateResponse = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ messages: allMessages, workspaceId, chatType: "onboarding", forceSummary: true })
+      });
+      const updatePayload = await updateResponse.json();
+      if (!updateResponse.ok || !updatePayload.reply) return;
+
+      const saved = await saveBusinessMemoryFromReply(updatePayload.reply, { appendConfirmation: false });
+      if (saved) {
+        // Show faint "Memory updated" indicator
+        const memMsg = await supabase.from("messages")
+          .insert({ chat_id: onboardingChatId, role: "assistant", content: "🧠 Memory updated." })
+          .select("id, role, content, created_at").single();
+        if (!memMsg.error) setOnboardingMessages(prev => [...prev, memMsg.data]);
+        // Refresh business memory in profile panel
+        const { data: bizMem } = await supabase.from("business_memory").select("content").eq("workspace_id", workspaceId).maybeSingle();
+        if (bizMem?.content) setBusinessMemory(bizMem.content);
+      }
+    } catch (err) {
+      console.error("Semantic memory update error:", err);
+    }
+  }, [workspaceId, onboardingChatId, saveBusinessMemoryFromReply]);
+
   const runSilentBackgroundSummary = useCallback(async (messagesForSummary) => {
     if (!workspaceId || !onboardingChatId || autoSummaryTriggeredRef.current || businessProfileSaveCompleteRef.current) return;
     autoSummaryTriggeredRef.current = true;
@@ -1016,6 +1053,9 @@ export default function DashboardPage() {
       const countAfter = nextMessages.filter((m) => m.role === "user" && typeof m.content === "string" && m.content.trim() && m.content !== "SUMMARISE_NOW").length;
       if (shouldPersist && countAfter >= AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current) {
         void runSilentBackgroundSummary([...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }]);
+      } else if (shouldPersist && businessProfileSaveCompleteRef.current) {
+        // Post-onboarding: semantic detection for ongoing memory updates
+        void runSemanticMemoryUpdate(trimmed, payload.reply, [...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }]);
       }
     } catch (err) { setOnboardingError(err.message ?? "Something went wrong."); }
     finally { setOnboardingBusy(false); setOnboardingInput(""); }
