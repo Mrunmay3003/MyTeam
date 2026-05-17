@@ -24,23 +24,19 @@ function ThemeSelector({ onClose }) {
 
   const current = getCurrent();
 
-  const [teammateMenuOpen, setTeammateMenuOpen] = useState(false);
-  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
-  const teammateMenuRef = useRef(null);
-
   return (
     <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-zinc-700 bg-zinc-800">
       <button type="button" onClick={() => select("system")} title="System"
         className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       </button>
       <button type="button" onClick={() => select("light")} title="Light"
-        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "light" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${current === "light" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
       </button>
       <button type="button" onClick={() => select("dark")} title="Dark"
-        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "dark" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${current === "dark" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       </button>
     </div>
   );
@@ -61,6 +57,9 @@ function CanvasIcon({ className }) {
 function XIcon({ className }) {
   return <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>;
 }
+function SettingsIcon({ className }) {
+  return <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
+}
 
 function getInitials(name) { return name.slice(0, 2).toUpperCase(); }
 
@@ -75,7 +74,6 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
   const initRef = useRef(false);
   const isPanningRef = useRef(false);
   const panStartRef = useRef({ x: 0, y: 0 });
-  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   const MGR_W = 440;
   const MGR_HEADER_H = 42;
@@ -290,6 +288,7 @@ export default function TeammatePage() {
   const [managerNode, setManagerNode] = useState(null);
   const [businessMemory, setBusinessMemory] = useState(null);
 
+  // Apply saved theme on mount
   useEffect(() => {
     const pref = localStorage.getItem("myteam-theme") ?? "system";
     const resolved = pref === "system"
@@ -316,12 +315,12 @@ export default function TeammatePage() {
       console.log("startup workspace check:", ws, wsErr);
 
       const myWsId = ws?.id ?? null;
-setMyWorkspaceId(myWsId);
+      setMyWorkspaceId(myWsId);
 
-if (ws?.linked_workspace_id && ws?.linked_chat_id) {
-  setWorkspaceId(ws.linked_workspace_id);
-  setChatId(ws.linked_chat_id);
-  await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id, myWsId, true);
+      if (ws?.linked_workspace_id && ws?.linked_chat_id) {
+        setWorkspaceId(ws.linked_workspace_id);
+        setChatId(ws.linked_chat_id);
+        await loadAndEnterChat(ws.linked_workspace_id, ws.linked_chat_id, myWsId, true);
       } else {
         setStep("enter_code");
       }
@@ -365,48 +364,45 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     if (mgr) setManagerNode({ id: mgr.id, name: mgr.name, pos: { x: mgr.pos_x ?? -220, y: mgr.pos_y ?? -21 } });
     const tms = data.chats.filter(c => c.type === "teammate").map(c => ({ id: c.id, name: c.name, pos: { x: c.pos_x ?? 80, y: c.pos_y ?? 200 } }));
     setAllTeammates(tms);
+
     if (Notification.permission === "granted") {
       await registerPushNotifications(ownWsId ?? wsId);
       setStep("chat");
     } else if (Notification.permission === "denied") {
       setStep("chat");
     } else {
-      // default — never chosen, returning user
       if (skipNotifStep) {
         setStep("enable_notifications");
       } else {
         setStep("chat");
       }
     }
-    // else step will be set by caller (invite flow)
 
     // Check for due scheduled prompts
-await fetch("/api/check-scheduled", {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ workspaceId: wsId }),
-});
-
-// Supabase Realtime — live message updates
-const channel = supabase
-  .channel(`messages:${chId}`)
-  .on("postgres_changes", {
-    event: "INSERT",
-    schema: "public",
-    table: "messages",
-  }, (payload) => {
-    if (payload.new.chat_id !== chId) return;
-    setMessages((prev) => {
-      const already = prev.some(m => m.id === payload.new.id);
-      if (already) return prev;
-      return [...prev, payload.new];
+    await fetch("/api/check-scheduled", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ workspaceId: wsId }),
     });
-  })
-  .subscribe((status) => {
-  console.log("Realtime subscription status:", status);
-});
 
-  // Cleanup on unmount handled by Next.js — store channel ref if needed
+    // Supabase Realtime — live message updates
+    const channel = supabase
+      .channel(`messages:${chId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+      }, (payload) => {
+        if (payload.new.chat_id !== chId) return;
+        setMessages((prev) => {
+          const already = prev.some(m => m.id === payload.new.id);
+          if (already) return prev;
+          return [...prev, payload.new];
+        });
+      })
+      .subscribe((status) => {
+        console.log("Realtime subscription status:", status);
+      });
   }
 
   async function handleCodeSubmit(e) {
@@ -466,64 +462,63 @@ const channel = supabase
       }
 
       if (wsId) {
-      await fetch("/api/save-canvas", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action: "save_teammate_link",
-          workspaceId: wsId,
-          userId,
-          payload: { linkedWorkspaceId: workspaceId, linkedChatId: chatId },
-        }),
-      });
-    }
+        await fetch("/api/save-canvas", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_teammate_link",
+            workspaceId: wsId,
+            userId,
+            payload: { linkedWorkspaceId: workspaceId, linkedChatId: chatId },
+          }),
+        });
+      }
 
       setStep("enable_notifications");
       console.log("calling loadAndEnterChat", workspaceId, chatId);
-      await loadAndEnterChat(workspaceId, chatId, myWsId ?? myWorkspaceId, false);
+      await loadAndEnterChat(workspaceId, chatId, wsId ?? myWorkspaceId, false);
       console.log("done");
     } catch (err) {
       console.error("handleAccept error:", err);
     }
   }
 
-async function registerPushNotifications(wsId) {
-  try {
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-    const reg = await navigator.serviceWorker.register("/sw.js");
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+  async function registerPushNotifications(wsId) {
+    try {
+      if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
+      const reg = await navigator.serviceWorker.register("/sw.js");
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") return;
 
-    function urlBase64ToUint8Array(base64String) {
-      const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-      const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-      const rawData = window.atob(base64);
-      const outputArray = new Uint8Array(rawData.length);
-      for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
+      function urlBase64ToUint8Array(base64String) {
+        const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+        const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+          outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
       }
-      return outputArray;
+
+      const vapidKey = VAPID_PUBLIC_KEY;
+      const existing = await reg.pushManager.getSubscription();
+      const subscription = existing ?? await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      });
+
+      const subRes = await fetch("/api/save-push-subscription", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId: wsId, subscription }),
+      });
+      const subJson = await subRes.json();
+      console.log("push subscription save result:", subRes.status, subJson);
+    } catch (err) {
+      console.error("Push registration error:", err);
     }
-
-    const vapidKey = VAPID_PUBLIC_KEY;
-
-    const existing = await reg.pushManager.getSubscription();
-    const subscription = existing ?? await reg.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey),
-    });
-
-    const subRes = await fetch("/api/save-push-subscription", {
-  method: "POST",
-  headers: { "content-type": "application/json" },
-  body: JSON.stringify({ workspaceId: wsId, subscription }),
-});
-const subJson = await subRes.json();
-console.log("push subscription save result:", subRes.status, subJson);
-  } catch (err) {
-    console.error("Push registration error:", err);
   }
-}
 
   async function handleSend() {
     if (!input.trim() || busy) return;
@@ -616,7 +611,7 @@ console.log("push subscription save result:", subRes.status, subJson);
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-300"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </div>
         </div>
-        <h2 className="text-lg font-bold text-zinc-100 mb-2">Stay On Track</h2>
+        <h2 className="text-lg font-bold text-zinc-100 mb-2">Stay Connected</h2>
         <p className="text-sm text-zinc-400 leading-relaxed mb-2">
           Enable notifications to get instant updates when your manager assigns tasks, sends announcements, or responds to your questions — so nothing slips through.
         </p>
@@ -626,7 +621,7 @@ console.log("push subscription save result:", subRes.status, subJson);
         <button
           type="button"
           onClick={async () => {
-            await registerPushNotifications(myWorkspaceId ?? myWsId);
+            await registerPushNotifications(myWorkspaceId);
             setStep("chat");
           }}
           className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white"
@@ -643,6 +638,7 @@ console.log("push subscription save result:", subRes.status, subJson);
       </div>
     </div>
   );
+
   // ── Main Chat UI ──────────────────────────────────────────────────────────
 
   return (
@@ -695,7 +691,6 @@ console.log("push subscription save result:", subRes.status, subJson);
 
           <nav className="flex-1 overflow-y-auto p-2">
             <ul className="space-y-1">
-              {/* Canvas button */}
               <li>
                 {sidebarOpen ? (
                   <button type="button" onClick={() => setCentreView("canvas")} className={`w-full flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${centreView === "canvas" ? "bg-zinc-800 text-zinc-50" : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"}`}>
@@ -714,7 +709,6 @@ console.log("push subscription save result:", subRes.status, subJson);
                 <li aria-hidden><div className="my-1 mx-1 border-t border-zinc-800" /></li>
               )}
 
-              {/* My chat — highlighted */}
               <li>
                 {sidebarOpen ? (
                   <button type="button" onClick={() => setCentreView("chat")} className={`w-full rounded-lg px-3 py-2.5 text-left truncate block transition-colors ${centreView === "chat" ? "bg-zinc-800 text-zinc-50" : "text-zinc-300 hover:bg-zinc-800/60"}`}>
@@ -727,7 +721,6 @@ console.log("push subscription save result:", subRes.status, subJson);
                 )}
               </li>
 
-              {/* Other teammates — visual only */}
               {allTeammates.filter(t => t.id !== chatId).map(tm => (
                 <li key={tm.id}>
                   {sidebarOpen ? (
@@ -739,6 +732,7 @@ console.log("push subscription save result:", subRes.status, subJson);
               ))}
             </ul>
           </nav>
+
           <div className="border-t border-zinc-800 p-2">
             {sidebarOpen ? (
               <div className="relative" data-settings-tm>
