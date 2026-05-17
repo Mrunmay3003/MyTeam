@@ -3,6 +3,45 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+function ThemeSelector({ onClose }) {
+  function getCurrent() {
+    if (typeof window === "undefined") return "system";
+    return localStorage.getItem("myteam-theme") ?? "system";
+  }
+
+  function select(pref) {
+    localStorage.setItem("myteam-theme", pref);
+    const resolved = pref === "system"
+      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      : pref;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+    onClose();
+  }
+
+  const current = getCurrent();
+
+  return (
+    <div className="flex items-center gap-1 p-1 rounded-lg border border-zinc-700 bg-zinc-800">
+      <button type="button" onClick={() => select("system")} title="System"
+        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </button>
+      <button type="button" onClick={() => select("light")} title="Light"
+        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "light" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+      <button type="button" onClick={() => select("dark")} title="Dark"
+        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "dark" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  );
+}
+
 const VAPID_PUBLIC_KEY = "BDdWsTie0axPtas7O08_qDr1t_Oemzb6-2t3Pe1gqKM-H6hkcUNZWVSas_zTRQBtb-IS5hFs0k5idlwtwJUHXAo";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
@@ -243,6 +282,18 @@ export default function TeammatePage() {
   const [allTeammates, setAllTeammates] = useState([]);
   const [managerNode, setManagerNode] = useState(null);
   const [businessMemory, setBusinessMemory] = useState(null);
+
+  useEffect(() => {
+    const pref = localStorage.getItem("myteam-theme") ?? "system";
+    const resolved = pref === "system"
+      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      : pref;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -587,6 +638,7 @@ console.log("push subscription save result:", subRes.status, subJson);
         <p className="text-sm font-semibold text-zinc-200">{chatName}</p>
         <div className="flex items-center gap-3">
           <span className="text-xs text-zinc-600">{orgName}</span>
+          <ThemeSelector onClose={() => {}} />
           <button
             type="button"
             onClick={async () => {
