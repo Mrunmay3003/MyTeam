@@ -997,9 +997,9 @@ export default function DashboardPage() {
 
       const saved = await saveBusinessMemoryFromReply(updatePayload.reply, { appendConfirmation: false });
       if (saved) {
-        // Show faint "Memory updated" indicator
+        // Show faint memory updated indicator — not a real message, just a local UI marker
         const memMsg = await supabase.from("messages")
-          .insert({ chat_id: onboardingChatId, role: "assistant", content: "🧠 Memory updated." })
+          .insert({ chat_id: onboardingChatId, role: "memory_update", content: "🧠 Memory updated." })
           .select("id, role, content, created_at").single();
         if (!memMsg.error) setOnboardingMessages(prev => [...prev, memMsg.data]);
         // Refresh business memory in profile panel
@@ -1501,14 +1501,21 @@ export default function DashboardPage() {
     <div className="flex min-h-0 flex-1 flex-col">
       <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {onboardingMessages.map((message, index) => {
-          const key = message.id ?? `${message.role}-${index}`;
-          const assistant = message.role === "assistant";
-          return (
-            <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
-              {message.content}
-            </div>
-          );
-        })}
+                    const key = message.id ?? `${message.role}-${index}`;
+                    if (message.role === "memory_update") {
+                      return (
+                        <div key={key} className="text-center text-[11px] text-zinc-600 py-1 select-none">
+                          {message.content}
+                        </div>
+                      );
+                    }
+                    const assistant = message.role === "assistant";
+                    return (
+                      <div key={key} className={`max-w-[92%] whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${assistant ? "mr-auto bg-zinc-800 text-zinc-200" : "ml-auto bg-zinc-700 text-zinc-100"}`}>
+                        {message.content}
+                      </div>
+                    );
+                  })}
       </div>
       <div className="shrink-0 border-t border-zinc-800 p-3">
         {onboardingError && <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>}
