@@ -76,6 +76,19 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
   const TM_W = 160;
   const TM_H = 42;
 
+  // Apply saved theme on mount
+  useEffect(() => {
+    const pref = localStorage.getItem("myteam-theme") ?? "system";
+    const resolved = pref === "system"
+      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      : pref;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, []);
+  
   useEffect(() => {
     if (initRef.current || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();

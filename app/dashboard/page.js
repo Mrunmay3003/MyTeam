@@ -90,6 +90,20 @@ function NewChatModal({ title, onClose, onCreate, existingNames = [], requireEma
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
+
+  // Apply saved theme on mount
+  useEffect(() => {
+    const pref = localStorage.getItem("myteam-theme") ?? "system";
+    const resolved = pref === "system"
+      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
+      : pref;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, []);
+  
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }

@@ -27,21 +27,6 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              try {
-                var pref = localStorage.getItem('myteam-theme') || 'system';
-                var resolved = pref === 'system'
-                  ? (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
-                  : pref;
-                if (resolved === 'light') document.documentElement.classList.add('light');
-              } catch(e) {}
-            })();
-          `
-        }} />
-      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
