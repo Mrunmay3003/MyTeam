@@ -24,10 +24,14 @@ function ThemeSelector({ onClose }) {
 
   const current = getCurrent();
 
+  const [teammateMenuOpen, setTeammateMenuOpen] = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const teammateMenuRef = useRef(null);
+
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg border border-zinc-700 bg-zinc-800">
+    <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-zinc-700 bg-zinc-800">
       <button type="button" onClick={() => select("system")} title="System"
-        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       </button>
       <button type="button" onClick={() => select("light")} title="Light"
@@ -325,6 +329,22 @@ if (ws?.linked_workspace_id && ws?.linked_chat_id) {
     if (!chatScrollRef.current) return;
     chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    function handler(e) { if (!teammateMenuRef.current?.contains(e.target)) setTeammateMenuOpen(false); }
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsPanelOpen) return;
+    function handler(e) {
+      if (e.target.closest("[data-settings-tm]")) return;
+      setSettingsPanelOpen(false);
+    }
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [settingsPanelOpen]);
 
   async function loadAndEnterChat(wsId, chId, ownWsId, skipNotifStep = false) {
     const res = await fetch("/api/get-workspace-data", {
@@ -638,17 +658,20 @@ console.log("push subscription save result:", subRes.status, subJson);
         <p className="text-sm font-semibold text-zinc-200">{chatName}</p>
         <div className="flex items-center gap-3">
           <span className="text-xs text-zinc-600">{orgName}</span>
-          <ThemeSelector onClose={() => {}} />
-          <button
-            type="button"
-            onClick={async () => {
-              await supabase.auth.signOut();
-              router.replace("/auth");
-            }}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            Log out
-          </button>
+          <div className="relative" ref={teammateMenuRef}>
+            <button
+              type="button"
+              onClick={() => setTeammateMenuOpen(o => !o)}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200 ring-1 ring-zinc-600 transition-colors hover:bg-zinc-600"
+            >
+              {getInitials(chatName)}
+            </button>
+            {teammateMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/40">
+                <button type="button" onClick={async () => { setTeammateMenuOpen(false); await supabase.auth.signOut(); router.replace("/auth"); }} className="block w-full px-3 py-2 text-left text-sm text-zinc-200 hover:bg-zinc-700/80">Log Out</button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -713,6 +736,25 @@ console.log("push subscription save result:", subRes.status, subJson);
               ))}
             </ul>
           </nav>
+          <div className="border-t border-zinc-800 p-2">
+            {sidebarOpen ? (
+              <div className="relative" data-settings-tm>
+                {settingsPanelOpen && (
+                  <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
+                    <div className="flex w-full items-center justify-between px-3 py-2">
+                      <span className="text-sm text-zinc-200">Theme</span>
+                      <ThemeSelector onClose={() => setSettingsPanelOpen(false)} />
+                    </div>
+                  </div>
+                )}
+                <button type="button" onClick={() => setSettingsPanelOpen(o => !o)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
+                  <SettingsIcon className="shrink-0" />Settings
+                </button>
+              </div>
+            ) : (
+              <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
+            )}
+          </div>
         </aside>
 
         {/* Centre */}

@@ -26,9 +26,9 @@ function ThemeSelector({ onClose }) {
   const current = getCurrent();
 
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg border border-zinc-700 bg-zinc-800">
+    <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-zinc-700 bg-zinc-800">
       <button type="button" onClick={() => select("system")} title="System"
-        className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
+        className={`flex h-5 w-5 items-center justify-center rounded transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
       </button>
       <button type="button" onClick={() => select("light")} title="Light"
