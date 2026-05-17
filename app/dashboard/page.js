@@ -1002,7 +1002,9 @@ export default function DashboardPage() {
       const updatePayload = await updateResponse.json();
       if (!updateResponse.ok || !updatePayload.reply) return;
 
+      console.log("Update reply preview:", updatePayload.reply?.slice(0, 200));
       const saved = await saveBusinessMemoryFromReply(updatePayload.reply, { appendConfirmation: false });
+      console.log("Save result:", saved);
       if (saved) {
         // Show faint memory updated indicator — not a real message, just a local UI marker
         const memMsg = await supabase.from("messages")
