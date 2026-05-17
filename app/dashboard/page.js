@@ -4,43 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
-// Theme selector — add near top of file
-function ThemeSelector({ onClose }) {
-  function getCurrent() {
-    if (typeof window === "undefined") return "system";
-    return localStorage.getItem("myteam-theme") ?? "system";
-  }
-
-  function select(pref) {
-    localStorage.setItem("myteam-theme", pref);
-    const resolved = pref === "system"
-      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-      : pref;
-    if (resolved === "light") {
-      document.documentElement.classList.add("light");
-    } else {
-      document.documentElement.classList.remove("light");
-    }
-    onClose();
-  }
-
-  const current = getCurrent();
-
-  return (
-    <div className="flex items-center gap-1 p-1 rounded-lg border border-zinc-700 bg-zinc-800">
-      <button type="button" onClick={() => select("system")} title="System" className={`flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors ${current === "system" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-      </button>
-      <button type="button" onClick={() => select("light")} title="Light" className={`flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors ${current === "light" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-      </button>
-      <button type="button" onClick={() => select("dark")} title="Dark" className={`flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors ${current === "dark" ? "bg-zinc-100 text-zinc-950" : "text-zinc-500 hover:text-zinc-300"}`}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      </button>
-    </div>
-  );
-}
-
 const MGR_W =600;
 const MGR_MIN_W = 440;
 const MGR_MIN_H = 340;
@@ -48,8 +11,6 @@ const MGR_HEADER_H = 42;
 const MGR_SEND_H = 54;
 const TM_NODE_W = 160;
 const TM_NODE_H = 42;
-
-const [showThemeSelector, setShowThemeSelector] = useState(false);
 
 const OPENING_MESSAGE = "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
 const AUTO_SUMMARY_EXCHANGES = 5;
@@ -90,20 +51,6 @@ function NewChatModal({ title, onClose, onCreate, existingNames = [], requireEma
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const inputRef = useRef(null);
-
-  // Apply saved theme on mount
-  useEffect(() => {
-    const pref = localStorage.getItem("myteam-theme") ?? "system";
-    const resolved = pref === "system"
-      ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
-      : pref;
-    if (resolved === "light") {
-      document.documentElement.classList.add("light");
-    } else {
-      document.documentElement.classList.remove("light");
-    }
-  }, []);
-  
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
@@ -1120,8 +1067,7 @@ export default function DashboardPage() {
         void runSilentBackgroundSummary([...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }]);
       } else if (shouldPersist && businessProfileSaveCompleteRef.current) {
         // Post-onboarding: semantic detection for ongoing memory updates
-        const allForSummary = [...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }];
-        void runSemanticMemoryUpdate(trimmed, payload.reply, allForSummary.slice(-6));
+        void runSemanticMemoryUpdate(trimmed, payload.reply, [...nextMessages.map((m) => ({ role: m.role === "assistant" ? "assistant" : "user", content: m.content })), { role: "assistant", content: payload.reply }]);
       }
     } catch (err) { setOnboardingError(err.message ?? "Something went wrong."); }
     finally { setOnboardingBusy(false); setOnboardingInput(""); }
@@ -1449,11 +1395,6 @@ export default function DashboardPage() {
                 <div className="relative" data-settings-menu>
   {settingsMenuOpen && (
     <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
-      <div className="flex w-full items-center justify-between px-3 py-2">
-        <span className="text-sm text-zinc-200">Theme</span>
-        <ThemeSelector onClose={() => setSettingsMenuOpen(false)} />
-      </div>
-      <div className="my-1 mx-2 border-t border-zinc-700" />
       <button type="button" onClick={() => { setSettingsMenuOpen(false); setTimeout(() => setShowOrgCodeSetup(true), 50); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
         Set Organisation Code
       </button>
@@ -1575,7 +1516,7 @@ export default function DashboardPage() {
                     const key = message.id ?? `${message.role}-${index}`;
                     if (message.role === "memory_update") {
                       return (
-                        <div key={key} className="text-left text-[12px] font-semibold text-zinc-500 py-1 px-1 select-none">
+                        <div key={key} className="text-center text-[11px] text-zinc-600 py-1 select-none">
                           {message.content}
                         </div>
                       );
