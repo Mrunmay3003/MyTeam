@@ -281,6 +281,9 @@ export default function TeammatePage() {
 
   // Sidebar + canvas + right panel
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [teammateMenuOpen, setTeammateMenuOpen] = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+  const teammateMenuRef = useRef(null);
   const [centreView, setCentreView] = useState("chat");
   const [rightOpen, setRightOpen] = useState(false);
   const [allTeammates, setAllTeammates] = useState([]);
