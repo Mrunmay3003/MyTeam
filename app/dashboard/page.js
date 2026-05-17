@@ -815,7 +815,10 @@ export default function DashboardPage() {
         .select("content")
         .eq("workspace_id", workspace.id)
         .maybeSingle();
-      if (bizMem?.content) setBusinessMemory(bizMem.content);
+      if (bizMem?.content) {
+        setBusinessMemory(bizMem.content);
+        businessProfileSaveCompleteRef.current = true;
+      }
       // Re-register push for returning managers if already granted
       if (Notification.permission === "granted") {
         registerPushNotifications(workspace.id);
@@ -999,7 +1002,7 @@ export default function DashboardPage() {
       if (saved) {
         // Show faint memory updated indicator — not a real message, just a local UI marker
         const memMsg = await supabase.from("messages")
-          .insert({ chat_id: onboardingChatId, role: "memory_update", content: "🧠 Memory updated." })
+          .insert({ chat_id: onboardingChatId, role: "memory_update", content: "Memory updated." })
           .select("id, role, content, created_at").single();
         if (!memMsg.error) setOnboardingMessages(prev => [...prev, memMsg.data]);
         // Refresh business memory in profile panel

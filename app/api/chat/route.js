@@ -11,6 +11,14 @@ function normalizeMessages(messages) {
     }));
 }
  
+function getISTTime() {
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: "Asia/Kolkata",
+    weekday: "long", year: "numeric", month: "long", day: "numeric",
+    hour: "2-digit", minute: "2-digit", hour12: true,
+  }).format(new Date());
+}
+
 /** Merge consecutive same-role turns (newline); drop leading turns until the first is `user`. */
 function dedupeAlternateRoles(messages) {
   if (!Array.isArray(messages) || messages.length === 0) return [];
@@ -121,8 +129,8 @@ export async function POST(request) {
     const system =
       chatType === "onboarding"
         ? forceSummary
-          ? `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nThe user asked for a summary now. Respond with ONBOARDING_COMPLETE followed immediately by a JSON object. The JSON MUST include ALL of these fields (use null if unknown): company_name, industry, location, team_size, team_type, roles (array), active_projects (array of objects with name and status), flagship_products (array of objects with name and description), goals_1_2_years, coordination_challenges, secondary_plan. Example format:\nONBOARDING_COMPLETE\n{"company_name":"...","industry":"...","location":"...","team_size":0,"team_type":"...","roles":[],"active_projects":[{"name":"...","status":"..."}],"flagship_products":[{"name":"...","description":"..."}],"goals_1_2_years":"...","coordination_challenges":"...","secondary_plan":"..."}`
-          : `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}`
+          ? `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nCurrent IST time: ${getISTTime()}\n\n...`
+          : `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nCurrent IST time: ${getISTTime()}`
         : `You are a helpful assistant.${businessMemoryContext}`;
  
     while (
