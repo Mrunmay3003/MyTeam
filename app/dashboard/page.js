@@ -987,8 +987,12 @@ export default function DashboardPage() {
         body: JSON.stringify({ detectOnly: true, userMessage, aiReply, workspaceId }),
       });
       const detectionData = await detectionResponse.json();
-      if (!detectionData.detected) return;
-
+      console.log("Detection result:", detectionData);
+      if (!detectionData.detected) {
+        console.log("Detection said NO — skipping update");
+        return;
+      }
+      console.log("Detection said YES — running update");
       // YES — trigger silent memory update
       const updateResponse = await fetch("/api/chat", {
         method: "POST",
