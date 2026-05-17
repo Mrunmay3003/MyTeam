@@ -1,3 +1,37 @@
+:root {
+  --bg-primary: #18181B;
+  --bg-secondary: #27272A;
+  --bg-elevated: #27272A;
+  --bg-input: #09090B;
+  --bg-user-msg: #3F3F46;
+  --bg-ai-msg: #27272A;
+  --border: #3F3F46;
+  --border-subtle: #27272A;
+  --text-primary: #F4F4F5;
+  --text-secondary: #A1A1AA;
+  --text-muted: #52525B;
+  --btn-primary-bg: #F4F4F5;
+  --btn-primary-text: #09090B;
+  --scrollbar: #3F3F46;
+}
+
+:root.light {
+  --bg-primary: #F5F3EF;
+  --bg-secondary: #EDEAE4;
+  --bg-elevated: #E8E4DC;
+  --bg-input: #FFFFFF;
+  --bg-user-msg: #D4CFC6;
+  --bg-ai-msg: #E8E4DC;
+  --border: #D6D0C8;
+  --border-subtle: #E8E4DC;
+  --text-primary: #1C1917;
+  --text-secondary: #57534E;
+  --text-muted: #A8A29E;
+  --btn-primary-bg: #1C1917;
+  --btn-primary-text: #F5F3EF;
+  --scrollbar: #D6D0C8;
+}
+
 @import "tailwindcss";
 
 :root {
