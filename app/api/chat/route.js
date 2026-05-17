@@ -129,7 +129,7 @@ export async function POST(request) {
     const system =
       chatType === "onboarding"
         ? forceSummary
-          ? `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nCurrent IST time: ${getISTTime()}\n\n...`
+          ? `You are a business memory extraction system. Your ONLY job is to output structured memory. Do NOT write any conversational text. Do NOT acknowledge the user. Output ONLY this exact format with no other text before or after:\n\nONBOARDING_COMPLETE\n{"company_name":"...","industry":"...","location":"...","team_size":0,"team_type":"...","roles":[],"active_projects":[{"name":"...","status":"..."}],"flagship_products":[{"name":"...","description":"..."}],"goals_1_2_years":"...","coordination_challenges":"...","secondary_plan":"..."}\n\nExtract all known information from this conversation and business context:${businessMemoryContext}\n\nCurrent IST time: ${getISTTime()}`
           : `${ONBOARDING_SYSTEM_PROMPT}${businessMemoryContext}\n\nCurrent IST time: ${getISTTime()}`
         : `You are a helpful assistant.${businessMemoryContext}`;
  

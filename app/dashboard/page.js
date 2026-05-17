@@ -1007,10 +1007,13 @@ export default function DashboardPage() {
       console.log("Save result:", saved);
       if (saved) {
         // Show faint memory updated indicator — not a real message, just a local UI marker
-        const memMsg = await supabase.from("messages")
-          .insert({ chat_id: onboardingChatId, role: "memory_update", content: "Memory updated." })
-          .select("id, role, content, created_at").single();
-        if (!memMsg.error) setOnboardingMessages(prev => [...prev, memMsg.data]);
+        const memRes = await fetch("/api/save-canvas", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "save_message", workspaceId, userId, payload: { chatId: onboardingChatId, role: "memory_update", content: "Memory updated." } }),
+        });
+        const memJson = await memRes.json();
+        if (memJson.data) setOnboardingMessages(prev => [...prev, memJson.data]);
         // Refresh business memory in profile panel
         const { data: bizMem } = await supabase.from("business_memory").select("content").eq("workspace_id", workspaceId).maybeSingle();
         if (bizMem?.content) setBusinessMemory(bizMem.content);
