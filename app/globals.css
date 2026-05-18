@@ -121,4 +121,7 @@ body {
 /* Input border focus in light */
 .light input:focus { border-color: #A8A29E !important; }
 
-/*push */
+.light .hover\:border-zinc-500:hover { border-color: #A8A29E !important; }
+.light .hover\:border-zinc-400:hover { border-color: #C5BFB5 !important; }
+.light .border-dashed { border-color: #C5BFB5 !important; }
+.light .hover\:bg-zinc-800\/40:hover { background-color: rgba(214,208,200,0.4) !important; }
