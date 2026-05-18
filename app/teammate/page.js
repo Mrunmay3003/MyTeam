@@ -340,7 +340,16 @@ export default function TeammatePage() {
       }
     }, 100);
   }, [messages]);
-  
+
+  useEffect(() => {
+    if (step !== "chat") return;
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 150);
+  }, [step]);
+
   useEffect(() => {
     function handler(e) { if (!teammateMenuRef.current?.contains(e.target)) setTeammateMenuOpen(false); }
     document.addEventListener("pointerdown", handler);
