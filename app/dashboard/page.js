@@ -606,32 +606,37 @@ export default function DashboardPage() {
   const [businessMemory, setBusinessMemory] = useState(null);
 
   function renderValue(value) {
-    if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
-    if (Array.isArray(value)) {
-      if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
-      return (
-        <ul className="space-y-1">
-          {value.map((v, i) => (
-            <li key={i} className="text-xs text-zinc-300">
-              • {typeof v === "object" && v !== null
-                ? Object.entries(v).map(([k, val]) => `${k}: ${val}`).join(", ")
-                : String(v)}
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    if (typeof value === "object") {
-      return (
-        <ul className="space-y-1">
-          {Object.entries(value).map(([k, v]) => (
-            <li key={k} className="text-xs text-zinc-300">• {k}: {String(v)}</li>
-          ))}
-        </ul>
-      );
-    }
-    return <p className="text-xs text-zinc-300 leading-relaxed">{String(value)}</p>;
+  if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
+    return (
+      <ul className="space-y-1.5 mt-1">
+        {value.map((v, i) => (
+          <li key={i} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
+            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
+            <span>{typeof v === "object" && v !== null
+              ? Object.entries(v).map(([k, val]) => `${k.replace(/_/g, " ")}: ${val}`).join(" · ")
+              : String(v)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
   }
+  if (typeof value === "object") {
+    return (
+      <ul className="space-y-1.5 mt-1">
+        {Object.entries(value).map(([k, v]) => (
+          <li key={k} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
+            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
+            <span><span className="text-zinc-400">{k.replace(/_/g, " ")}:</span> {String(v)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className="text-xs text-zinc-300 leading-relaxed mt-1">{String(value)}</p>;
+}
 
   async function registerPushNotifications(wsId) {
     try {
@@ -1554,10 +1559,10 @@ export default function DashboardPage() {
       <div className="flex h-10 shrink-0 items-center border-b border-zinc-800 px-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Profile</h2>
       </div>
-      <div className="overflow-y-auto flex-1 p-3 space-y-3">
+      <div className="p-3 space-y-5">
         {Object.entries(businessMemory).map(([key, value]) => (
-          <div key={key}>
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-600 mb-1">{key.replace(/_/g, " ")}</p>
+          <div key={key} className="border-b border-zinc-800 pb-4 last:border-0 last:pb-0">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">{key.replace(/_/g, " ")}</p>
             {renderValue(value)}
           </div>
         ))}
