@@ -334,9 +334,13 @@ export default function TeammatePage() {
 
   useEffect(() => {
     if (!chatScrollRef.current) return;
-    chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    setTimeout(() => {
+      if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+      }
+    }, 100);
   }, [messages]);
-
+  
   useEffect(() => {
     function handler(e) { if (!teammateMenuRef.current?.contains(e.target)) setTeammateMenuOpen(false); }
     document.addEventListener("pointerdown", handler);
