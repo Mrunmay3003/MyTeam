@@ -173,7 +173,7 @@ function ReadOnlyCanvas({ managerNode, teammates, myChat }) {
         {managerNode && (
           <div style={{ position: "absolute", left: managerNode.pos.x, top: managerNode.pos.y, width: MGR_W, zIndex: 10 }}>
             <div className="rounded-2xl border border-zinc-600 bg-zinc-900 shadow-xl shadow-black/50">
-              <div className="flex items-center justify-between gap-2 px-4 rounded-2xl select-none" style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}>
+              <div className="flex items-center justify-between gap-2 px-4 rounded-2xl select-none bg-zinc-800" style={{ height: MGR_HEADER_H }}>
                 <span className="truncate text-sm font-bold text-zinc-100">{managerNode.name}</span>
                 <span className="text-[10px] text-zinc-600 shrink-0">Manager</span>
               </div>

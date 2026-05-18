@@ -106,9 +106,9 @@ body {
 .light * { scrollbar-color: #D6D0C8 transparent !important; }
 .light *::-webkit-scrollbar-thumb { background-color: #D6D0C8 !important; }
 
-.light .bg-zinc-800.text-zinc-50 { background-color: #1C1917 !important; color: #F5F3EF !important; }
-.light .bg-zinc-700.text-zinc-50 { background-color: #1C1917 !important; color: #F5F3EF !important; }
-.light .bg-zinc-600.text-zinc-50 { background-color: #1C1917 !important; color: #F5F3EF !important; }
+.light .bg-zinc-800.text-zinc-50 { background-color: #57534E !important; color: #F5F3EF !important; }
+.light .bg-zinc-700.text-zinc-50 { background-color: #57534E !important; color: #F5F3EF !important; }
+.light .bg-zinc-600.text-zinc-50 { background-color: #57534E !important; color: #F5F3EF !important; }
 
 .light .hover\:bg-zinc-800\/30:hover { background-color: rgba(214,208,200,0.3) !important; }
 .light .bg-zinc-800\/50 { background-color: rgba(214,208,200,0.5) !important; }
