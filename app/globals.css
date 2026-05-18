@@ -68,3 +68,40 @@ body {
 .light .border-zinc-800 { border-color: #E8E4DC !important; }
 .light .border-zinc-700 { border-color: #D6D0C8 !important; }
 .light .bg-zinc-800\/90 { background-color: rgba(232,228,220,0.9) !important; }
+
+/* Inline style overrides for light mode */
+.light [style*="rgba(39,39,42"] { background: rgba(232,228,220,0.97) !important; }
+.light [style*="#18181B"] { background-color: #F5F3EF !important; }
+.light [style*="rgba(24,24,27"] { background: rgba(245,243,239,0.97) !important; }
+
+/* Hover states */
+.light .hover\:bg-zinc-800\/60:hover { background-color: rgba(232,228,220,0.6) !important; }
+.light .hover\:bg-zinc-700\/80:hover { background-color: rgba(212,207,198,0.8) !important; }
+.light .hover\:bg-zinc-700:hover { background-color: #D4CFC6 !important; }
+.light .hover\:bg-zinc-800:hover { background-color: #EDEAE4 !important; }
+.light .hover\:bg-zinc-600:hover { background-color: #C5BFB5 !important; }
+
+/* Active/selected states */
+.light .bg-zinc-800\/90 { background-color: rgba(232,228,220,0.9) !important; }
+.light .bg-zinc-800\/60 { background-color: rgba(232,228,220,0.6) !important; }
+.light .bg-zinc-800\/30 { background-color: rgba(232,228,220,0.3) !important; }
+.light .bg-zinc-700\/80 { background-color: rgba(212,207,198,0.8) !important; }
+
+/* Ring/focus states */
+.light .ring-zinc-600 { --tw-ring-color: #D6D0C8 !important; }
+.light .focus\:border-zinc-600:focus { border-color: #D6D0C8 !important; }
+.light .focus\:border-zinc-500:focus { border-color: #C5BFB5 !important; }
+.light .focus\:ring-zinc-600\/30:focus { --tw-ring-color: rgba(197,191,181,0.3) !important; }
+.light .focus\:ring-zinc-500\/25:focus { --tw-ring-color: rgba(197,191,181,0.25) !important; }
+
+/* Shadow overrides */
+.light .shadow-black\/50 { --tw-shadow-color: rgba(0,0,0,0.15) !important; }
+.light .shadow-black\/60 { --tw-shadow-color: rgba(0,0,0,0.15) !important; }
+.light .shadow-black\/40 { --tw-shadow-color: rgba(0,0,0,0.1) !important; }
+
+/* Canvas dot grid */
+.light .absolute.inset-0[style*="radial-gradient"] { opacity: 0.15 !important; }
+
+/* Scrollbar */
+.light * { scrollbar-color: #D6D0C8 transparent !important; }
+.light *::-webkit-scrollbar-thumb { background-color: #D6D0C8 !important; }
