@@ -282,6 +282,8 @@ export default function TeammatePage() {
   const [busy, setBusy] = useState(false);
   const chatScrollRef = useRef(null);
 
+  const [showChatScrollBtn, setShowChatScrollBtn] = useState(false);
+
   // Sidebar + canvas + right panel
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [teammateMenuOpen, setTeammateMenuOpen] = useState(false);
@@ -778,7 +780,15 @@ export default function TeammatePage() {
             <ReadOnlyCanvas managerNode={managerNode} teammates={allTeammates} myChat={chatId} />
           ) : (
             <div className="flex flex-1 flex-col min-h-0">
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div 
+                ref={chatScrollRef} 
+                className="flex-1 overflow-y-auto p-4 space-y-3"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+                  setShowChatScrollBtn(!atBottom);
+                }}
+              >
                 {messages.length === 0 && (
                   <p className="text-center text-xs text-zinc-600 pt-12">Your AI assistant will reach out with tasks and updates here.</p>
                 )}
@@ -791,7 +801,16 @@ export default function TeammatePage() {
                   );
                 })}
               </div>
-              <div className="shrink-0 border-t border-zinc-800 p-3">
+              <div className="shrink-0 border-t border-zinc-800 p-3 relative">
+                {showChatScrollBtn && (
+                  <button
+                    type="button"
+                    onClick={() => { if (chatScrollRef.current) { chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight; setShowChatScrollBtn(false); } }}
+                    className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                )}
                 <div className="flex gap-2">
                   <input type="text" value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter" && !busy && input.trim()) handleSend(); }} placeholder="Reply…" disabled={busy} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 disabled:opacity-50" />
                   <button type="button" onClick={handleSend} disabled={busy || !input.trim()} className="shrink-0 rounded-lg bg-zinc-100 px-4 py-2.5 text-sm font-semibold text-zinc-950 hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed">Send</button>

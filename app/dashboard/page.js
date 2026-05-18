@@ -51,6 +51,7 @@ const MGR_SEND_H = 54;
 const TM_NODE_W = 160;
 const TM_NODE_H = 42;
 
+
 const OPENING_MESSAGE = "Hey! Welcome to MyTeam. I am here to help set up your workspace. To get started, tell me a bit about your business — what do you do and who is on your team?";
 const AUTO_SUMMARY_EXCHANGES = 5;
 const BUSINESS_PROFILE_SAVED_MESSAGE = "✅ Business Profile saved! We will update it from time to time as we discuss here in this Business Context panel.";
@@ -379,7 +380,16 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
         {/* Chat panel — below header */}
         {node.chatOpen && (
           <div className="border-t border-zinc-800 rounded-b-2xl overflow-hidden">
-            <div ref={scrollRef} className="manager-chat-scroll overflow-y-auto p-3 space-y-2" style={{ height: nodeH }}>
+            <div 
+              ref={scrollRef} 
+              className="manager-chat-scroll overflow-y-auto p-3 space-y-2 relative" 
+              style={{ height: nodeH }}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+                setShowMgrScrollBtn(!atBottom);
+              }}
+            >
               {messages.length === 0 ? (
                 <p className="text-xs text-zinc-600 text-center pt-10">
                   Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
@@ -393,8 +403,17 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
                 );
               })}
             </div>
-            <div className="border-t border-zinc-800 p-3" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
-              <div className="flex gap-2">
+            <div className="border-t border-zinc-800 p-3 relative" style={{ height: MGR_SEND_H, boxSizing: "border-box" }}>
+                {showMgrScrollBtn && (
+                  <button
+                    type="button"
+                    onClick={() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; setShowMgrScrollBtn(false); } }}
+                    className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                  </button>
+                )}
+                <div className="flex gap-2">
                 <input
                   type="text"
                   value={inputValue}
@@ -586,6 +605,11 @@ export default function DashboardPage() {
 
   const [showManagerNotifPrompt, setShowManagerNotifPrompt] = useState(false);
 
+  const [showMgrScrollBtn, setShowMgrScrollBtn] = useState(false);
+  const [showCtxScrollBtn, setShowCtxScrollBtn] = useState(false);
+
+  const [activeTeammateMessages, setActiveTeammateMessages] = useState([]);
+
   // Manager chat state
   const [managerMessages, setManagerMessages] = useState([]);
   const [managerInput, setManagerInput] = useState("");
@@ -705,6 +729,33 @@ export default function DashboardPage() {
     if (managerNode) names.push(managerNode.name);
     return names;
   }, [teammates, managerNode]);
+
+  useEffect(() => {
+    if (!activeChatId) { setActiveTeammateMessages([]); return; }
+    supabase.from("messages")
+      .select("id, role, content, created_at")
+      .eq("chat_id", activeChatId)
+      .order("created_at", { ascending: true })
+      .then(({ data }) => { if (data) setActiveTeammateMessages(data); });
+
+    const channel = supabase
+      .channel(`manager-spectate:${activeChatId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "messages",
+        filter: `chat_id=eq.${activeChatId}`,
+      }, (payload) => {
+        setActiveTeammateMessages(prev => {
+          const already = prev.some(m => m.id === payload.new.id);
+          if (already) return prev;
+          return [...prev, payload.new];
+        });
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [activeChatId]);
 
   useEffect(() => {
     const pref = localStorage.getItem("myteam-theme") ?? "system";
@@ -1516,13 +1567,29 @@ export default function DashboardPage() {
                   <h2 className="text-sm font-semibold text-zinc-200 truncate">{activeTeammate?.name ?? "Chat"}</h2>
                   <button type="button" onClick={closeTeammateChat} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"><XIcon /></button>
                 </div>
-                <div className="flex flex-1 flex-col items-center justify-center px-6">
-                  <p className="text-sm text-zinc-500">Chat log for <span className="text-zinc-300 font-medium">{activeTeammate?.name}</span> will appear here.</p>
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {activeTeammateMessages.length === 0 ? (
+                    <p className="text-center text-xs text-zinc-600 pt-12">No messages yet between {activeTeammate?.name} and their AI assistant.</p>
+                  ) : (
+                    activeTeammateMessages.map((m, i) => {
+                      const isUser = m.role === "user";
+                      return (
+                        <div key={m.id ?? i} className={`max-w-[80%] whitespace-pre-wrap rounded-xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`}>
+                          {m.content}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
                 <div className="shrink-0 border-t border-zinc-800 bg-zinc-900 p-3">
                   <div className="mx-auto flex max-w-3xl gap-2">
-                    <input type="text" placeholder={`Message ${activeTeammate?.name ?? ""}…`} className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30" />
-                    <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-50">Send</button>
+                    <input 
+                      type="text" 
+                      disabled 
+                      placeholder="You are in spectator mode — only the AI can message this teammate." 
+                      className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-600 placeholder:text-zinc-600 outline-none cursor-not-allowed opacity-60" 
+                    />
+                    <button type="button" disabled className="shrink-0 rounded-lg bg-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-300 opacity-40 cursor-not-allowed">Send</button>
                   </div>
                 </div>
               </div>
@@ -1572,7 +1639,15 @@ export default function DashboardPage() {
 
   {contextOpen && (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={contextScrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+      <div 
+                  ref={contextScrollRef} 
+                  className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 relative"
+                  onScroll={(e) => {
+                    const el = e.currentTarget;
+                    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+                    setShowCtxScrollBtn(!atBottom);
+                  }}
+                >
         {onboardingMessages.map((message, index) => {
                     const key = message.id ?? `${message.role}-${index}`;
                     if (message.role === "memory_update") {
@@ -1590,8 +1665,17 @@ export default function DashboardPage() {
                     );
                   })}
       </div>
-      <div className="shrink-0 border-t border-zinc-800 p-3">
-        {onboardingError && <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>}
+      <div className="shrink-0 border-t border-zinc-800 p-3 relative">
+                  {showCtxScrollBtn && (
+                    <button
+                      type="button"
+                      onClick={() => { if (contextScrollRef.current) { contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight; setShowCtxScrollBtn(false); } }}
+                      className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
+                    </button>
+                  )}
+                  {onboardingError && <p className="mb-2 rounded-md border border-red-900/50 bg-red-950/40 px-2.5 py-1.5 text-xs text-red-300">{onboardingError}</p>}
         {onboardingUserMessageCount < AUTO_SUMMARY_EXCHANGES && !businessProfileSaveCompleteRef.current && (
           <div className="mb-2 flex items-center justify-between">
             <p className="text-[11px] text-zinc-500">{remainingExchanges} exchanges before auto-summary</p>
