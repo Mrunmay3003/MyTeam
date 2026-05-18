@@ -57,3 +57,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.light .bg-zinc-900 { background-color: #F5F3EF !important; }
+.light .bg-zinc-800 { background-color: #EDEAE4 !important; }
+.light .bg-zinc-950 { background-color: #FFFFFF !important; }
+.light .bg-zinc-700 { background-color: #E8E4DC !important; }
+.light .text-zinc-100, .light .text-zinc-200 { color: #1C1917 !important; }
+.light .text-zinc-300, .light .text-zinc-400 { color: #57534E !important; }
+.light .text-zinc-500, .light .text-zinc-600 { color: #A8A29E !important; }
+.light .border-zinc-800 { border-color: #E8E4DC !important; }
+.light .border-zinc-700 { border-color: #D6D0C8 !important; }
+.light .bg-zinc-800\/90 { background-color: rgba(232,228,220,0.9) !important; }
