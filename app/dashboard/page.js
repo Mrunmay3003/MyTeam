@@ -365,8 +365,8 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
 
         {/* Header — always on top */}
         <div
-          className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
-          style={{ height: MGR_HEADER_H, background: "rgba(39,39,42,0.97)" }}
+          className={`flex items-center justify-between gap-2 px-4 cursor-grab active:cursor-grabbing select-none bg-zinc-800 ${node.chatOpen ? "rounded-t-2xl" : "rounded-2xl"}`}
+          style={{ height: MGR_HEADER_H }}
           onMouseDown={onHeaderMouseDown}
           onDoubleClick={onToggleChat}
         >
