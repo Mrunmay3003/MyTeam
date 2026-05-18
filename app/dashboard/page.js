@@ -1555,11 +1555,11 @@ export default function DashboardPage() {
   </div>
 
   {contextOpen && businessProfileOpen && businessMemory && (
-    <div className="absolute top-10 right-0 bottom-0 z-20 flex flex-col bg-zinc-900 border-l border-zinc-800" style={{ width: "280px" }}>
+    <div className="absolute top-10 right-0 bottom-0 z-20 flex flex-col bg-zinc-900 border-l border-zinc-800 overflow-hidden" style={{ width: "280px" }}>
       <div className="flex h-10 shrink-0 items-center border-b border-zinc-800 px-3">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Business Profile</h2>
       </div>
-      <div className="p-3 space-y-5">
+      <div className="overflow-y-auto flex-1 p-3 space-y-3" onWheel={e => e.stopPropagation()}>
         {Object.entries(businessMemory).map(([key, value]) => (
           <div key={key} className="border-b border-zinc-800 pb-4 last:border-0 last:pb-0">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 mb-1">{key.replace(/_/g, " ")}</p>
