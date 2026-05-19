@@ -300,7 +300,7 @@ function ConnectionLines({ managerNode, teammates }) {
   );
 }
 
-function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onSizeChange, onContextMenu, messages, inputValue, onInputChange, onSend, busy, scrollRef }) {
+function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, onSizeChange, onContextMenu, messages, inputValue, onInputChange, onSend, busy, scrollRef, showMgrScrollBtn, setShowMgrScrollBtn }) {
   const dragging = useRef(false);
   const resizing = useRef(null);
   const start = useRef({});
@@ -1542,6 +1542,8 @@ export default function DashboardPage() {
                     onSend={handleManagerSend}
                     busy={managerBusy}
                     scrollRef={managerScrollRef}
+                    showMgrScrollBtn={showMgrScrollBtn}
+                    setShowMgrScrollBtn={setShowMgrScrollBtn}
                     />
                   )}
                   {teammates.map((tm) => (
