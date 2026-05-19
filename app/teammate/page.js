@@ -771,7 +771,7 @@ export default function TeammatePage() {
           <div className="border-t border-zinc-800 p-2">
   <div className="relative" data-settings-tm>
     {settingsPanelOpen && (
-      <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
+      <div className="fixed bottom-16 left-2 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-[9999]">
         <div className="flex w-full items-center justify-between px-3 py-2">
           <span className="text-sm text-zinc-200">Theme</span>
           <ThemeSelector onClose={() => setSettingsPanelOpen(false)} />
