@@ -338,7 +338,7 @@ export default function TeammatePage() {
     if (!chatScrollRef.current) return;
     setTimeout(() => {
       if (chatScrollRef.current) {
-        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
       }
     }, 100);
   }, [messages]);
@@ -347,7 +347,7 @@ export default function TeammatePage() {
     if (step !== "chat") return;
     setTimeout(() => {
       if (chatScrollRef.current) {
-        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
       }
     }, 150);
   }, [step]);
@@ -805,7 +805,7 @@ export default function TeammatePage() {
                 {showChatScrollBtn && (
                   <button
                     type="button"
-                    onClick={() => { if (chatScrollRef.current) { chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight; setShowChatScrollBtn(false); } }}
+                    onClick={() => { if (chatScrollRef.current) { chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" }); setShowChatScrollBtn(false); } }}
                     className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>

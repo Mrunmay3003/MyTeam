@@ -407,7 +407,7 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
                 {showMgrScrollBtn && (
                   <button
                     type="button"
-                    onClick={() => { if (scrollRef.current) { scrollRef.current.scrollTop = scrollRef.current.scrollHeight; setShowMgrScrollBtn(false); } }}
+                    onClick={() => { if (scrollRef.current) { scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }); setShowMgrScrollBtn(false); } }}
                     className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
                   >
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
@@ -957,7 +957,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!contextScrollRef.current) return;
-    contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight;
+    contextScrollRef.current.scrollTo({ top: contextScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [onboardingMessages, contextOpen]);
   useEffect(() => {
     if (!managerNode?.id) return;
@@ -986,7 +986,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!managerScrollRef.current) return;
-    managerScrollRef.current.scrollTop = managerScrollRef.current.scrollHeight;
+    managerScrollRef.current.scrollTo({ top: managerScrollRef.current.scrollHeight, behavior: "smooth" });
   }, [managerMessages]);
 
   const onboardingUserMessageCount = useMemo(
@@ -1671,7 +1671,7 @@ export default function DashboardPage() {
                   {showCtxScrollBtn && (
                     <button
                       type="button"
-                      onClick={() => { if (contextScrollRef.current) { contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight; setShowCtxScrollBtn(false); } }}
+                      onClick={() => { if (contextScrollRef.current) { contextScrollRef.current.scrollTo({ top: contextScrollRef.current.scrollHeight, behavior: "smooth" }); setShowCtxScrollBtn(false); } }}
                       className="absolute -top-8 right-3 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800 text-zinc-400 shadow-md hover:bg-zinc-700 hover:text-zinc-200 transition-colors z-10"
                     >
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m6 9 6 6 6-6"/></svg>
