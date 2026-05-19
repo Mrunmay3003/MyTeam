@@ -1511,28 +1511,28 @@ useEffect(() => {
               </ul>
             </nav>
             <div className="border-t border-zinc-800 p-2">
-              {sidebarOpen ? (
-                <div className="relative" data-settings-menu>
-  {settingsMenuOpen && (
-    <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
-      <div className="flex w-full items-center justify-between px-3 py-2">
-        <span className="text-sm text-zinc-200">Theme</span>
-        <ThemeSelector onClose={() => setSettingsMenuOpen(false)} />
+  <div className="relative" data-settings-menu>
+    {settingsMenuOpen && (
+      <div className="absolute bottom-full left-0 mb-1 w-52 rounded-lg border border-zinc-700 bg-zinc-800 py-1 shadow-xl shadow-black/50 z-50">
+        <div className="flex w-full items-center justify-between px-3 py-2">
+          <span className="text-sm text-zinc-200">Theme</span>
+          <ThemeSelector onClose={() => setSettingsMenuOpen(false)} />
+        </div>
+        <div className="my-1 mx-2 border-t border-zinc-700" />
+        <button type="button" onClick={() => { setSettingsMenuOpen(false); setTimeout(() => setShowOrgCodeSetup(true), 50); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
+          Set Organisation Code
+        </button>
       </div>
-      <div className="my-1 mx-2 border-t border-zinc-700" />
-      <button type="button" onClick={() => { setSettingsMenuOpen(false); setTimeout(() => setShowOrgCodeSetup(true), 50); }} className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-zinc-200 transition-colors hover:bg-zinc-700/80">
-        Set Organisation Code
+    )}
+    {sidebarOpen ? (
+      <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
+        <SettingsIcon className="shrink-0" />Settings
       </button>
-    </div>
-  )}
-  <button type="button" onClick={() => setSettingsMenuOpen(o => !o)} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300">
-    <SettingsIcon className="shrink-0" />Settings
-  </button>
+    ) : (
+      <button type="button" title="Settings" onClick={() => setSettingsMenuOpen(o => !o)} className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
+    )}
+  </div>
 </div>
-              ) : (
-                <button type="button" title="Settings" onClick={() => { setSidebarOpen(true); setTimeout(() => setSettingsMenuOpen(true), 210); }} className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
-              )}
-            </div>
           </aside>
 
           <main className="flex min-w-0 flex-1 flex-col bg-zinc-900 overflow-hidden">
