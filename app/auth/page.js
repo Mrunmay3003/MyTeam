@@ -4,6 +4,78 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+function ThemeSelector() {
+  const [current, setCurrent] = useState("system");
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    setCurrent(localStorage.getItem("myteam-theme") ?? "system");
+  }, []);
+
+  function select(pref) {
+    localStorage.setItem("myteam-theme", pref);
+    const resolved =
+      pref === "system"
+        ? window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark"
+        : pref;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+    setCurrent(pref);
+  }
+
+  return (
+    <div className="flex items-center gap-0.5 p-0.5 rounded-md border border-zinc-700 bg-zinc-800 [html.light_&]:border-zinc-300 [html.light_&]:bg-zinc-100">
+      <button
+        type="button"
+        onClick={() => select("system")}
+        title="System"
+        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+          current === "system"
+            ? "bg-zinc-100 text-zinc-950 [html.light_&]:bg-zinc-800 [html.light_&]:text-zinc-100"
+            : "text-zinc-500 hover:text-zinc-300 [html.light_&]:hover:text-zinc-600"
+        }`}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8M12 17v4" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => select("light")}
+        title="Light"
+        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+          current === "light"
+            ? "bg-zinc-100 text-zinc-950 [html.light_&]:bg-zinc-800 [html.light_&]:text-zinc-100"
+            : "text-zinc-500 hover:text-zinc-300 [html.light_&]:hover:text-zinc-600"
+        }`}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        onClick={() => select("dark")}
+        title="Dark"
+        className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
+          current === "dark"
+            ? "bg-zinc-100 text-zinc-950 [html.light_&]:bg-zinc-800 [html.light_&]:text-zinc-100"
+            : "text-zinc-500 hover:text-zinc-300 [html.light_&]:hover:text-zinc-600"
+        }`}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export default function AuthPage() {
   const router = useRouter();
   const [mode, setMode] = useState("login");
@@ -14,9 +86,25 @@ export default function AuthPage() {
   const [notice, setNotice] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Apply saved theme on mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("myteam-theme") ?? "system";
+    const resolved =
+      saved === "system"
+        ? window.matchMedia("(prefers-color-scheme: light)").matches
+          ? "light"
+          : "dark"
+        : saved;
+    if (resolved === "light") {
+      document.documentElement.classList.add("light");
+    } else {
+      document.documentElement.classList.remove("light");
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
       const {
         data: { session },
@@ -36,10 +124,7 @@ export default function AuthPage() {
         router.refresh();
       }
     })();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [router]);
 
   function isLikelyExistingAccountError(signUpError) {
@@ -74,48 +159,32 @@ export default function AuthPage() {
     setInfo(null);
     setNotice(null);
     setLoading(true);
-
     try {
       if (mode === "signup") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-        });
+        const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) {
           if (isLikelyExistingAccountError(signUpError)) {
-            setNotice(
-              "An account with this email already exists. Use Login with your password."
-            );
+            setNotice("An account with this email already exists. Use Login with your password.");
             setMode("login");
           } else {
             setError(signUpError.message);
           }
           return;
         }
-
-        // Duplicate signup: Supabase returns a user with no new identities (security / existing email).
         const identities = data?.user?.identities ?? [];
         if (data?.user && identities.length === 0) {
-          setNotice(
-            "This email is already registered. Please sign in instead."
-          );
+          setNotice("This email is already registered. Please sign in instead.");
           setMode("login");
           return;
         }
-
         if (data.session) {
           router.push("/dashboard");
           router.refresh();
         } else {
-          setInfo(
-            "Account created. If email confirmation is enabled, check your inbox before signing in."
-          );
+          setInfo("Account created. If email confirmation is enabled, check your inbox before signing in.");
         }
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
           setError(signInError.message);
           return;
@@ -127,37 +196,51 @@ export default function AuthPage() {
     }
   }
 
+  function clearMessages() {
+    setError(null);
+    setInfo(null);
+    setNotice(null);
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 px-4 py-12 font-sans">
-      <div className="w-full max-w-md rounded-2xl border border-zinc-800/80 bg-zinc-900/80 p-8 shadow-2xl shadow-black/40 backdrop-blur-sm">
-        <div className="mb-8 text-center">
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-50">
+    <div className="relative min-h-screen flex items-center justify-center bg-zinc-950 px-4 py-12 [html.light_&]:bg-zinc-100 transition-colors duration-200">
+
+      {/* Subtle dot grid background */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-40 [html.light_&]:opacity-20"
+        style={{
+          backgroundImage: "radial-gradient(circle, #3f3f46 1px, transparent 1px)",
+          backgroundSize: "28px 28px",
+        }}
+      />
+
+      {/* Card */}
+      <div className="relative w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900 p-8 shadow-2xl shadow-black/50 [html.light_&]:border-zinc-200 [html.light_&]:bg-white [html.light_&]:shadow-zinc-300/40">
+
+        {/* Header */}
+        <div className="mb-7 text-center">
+          <h1 className="text-lg font-bold tracking-tight text-zinc-50 [html.light_&]:text-zinc-900">
             MyTeam
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 text-xs text-zinc-500 [html.light_&]:text-zinc-500">
             {mode === "login" ? "Sign in to continue" : "Create your account"}
           </p>
         </div>
 
+        {/* Mode toggle */}
         <div
-          className="mb-6 flex rounded-lg bg-zinc-950/80 p-1 ring-1 ring-zinc-800"
+          className="mb-6 flex rounded-lg bg-zinc-950/80 p-1 ring-1 ring-zinc-800 [html.light_&]:bg-zinc-100 [html.light_&]:ring-zinc-200"
           role="tablist"
-          aria-label="Authentication mode"
         >
           <button
             type="button"
             role="tab"
             aria-selected={mode === "login"}
-            onClick={() => {
-              setMode("login");
-              setError(null);
-              setInfo(null);
-              setNotice(null);
-            }}
+            onClick={() => { setMode("login"); clearMessages(); }}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               mode === "login"
-                ? "bg-zinc-800 text-zinc-50 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-zinc-800 text-zinc-50 shadow-sm [html.light_&]:bg-white [html.light_&]:text-zinc-900 [html.light_&]:shadow-zinc-200"
+                : "text-zinc-500 hover:text-zinc-300 [html.light_&]:hover:text-zinc-700"
             }`}
           >
             Login
@@ -166,23 +249,19 @@ export default function AuthPage() {
             type="button"
             role="tab"
             aria-selected={mode === "signup"}
-            onClick={() => {
-              setMode("signup");
-              setError(null);
-              setInfo(null);
-              setNotice(null);
-            }}
+            onClick={() => { setMode("signup"); clearMessages(); }}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${
               mode === "signup"
-                ? "bg-zinc-800 text-zinc-50 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "bg-zinc-800 text-zinc-50 shadow-sm [html.light_&]:bg-white [html.light_&]:text-zinc-900 [html.light_&]:shadow-zinc-200"
+                : "text-zinc-500 hover:text-zinc-300 [html.light_&]:hover:text-zinc-700"
             }`}
           >
             Sign Up
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label
               htmlFor="email"
@@ -198,8 +277,8 @@ export default function AuthPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none ring-zinc-600 transition-shadow focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30"
               placeholder="you@company.com"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-shadow focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 [html.light_&]:border-zinc-300 [html.light_&]:bg-zinc-50 [html.light_&]:text-zinc-900 [html.light_&]:placeholder:text-zinc-400 [html.light_&]:focus:border-zinc-400 [html.light_&]:focus:ring-zinc-400/30"
             />
           </div>
           <div>
@@ -213,36 +292,28 @@ export default function AuthPage() {
               id="password"
               name="password"
               type="password"
-              autoComplete={
-                mode === "login" ? "current-password" : "new-password"
-              }
+              autoComplete={mode === "login" ? "current-password" : "new-password"}
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none ring-zinc-600 transition-shadow focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30"
               placeholder="••••••••"
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition-shadow focus:border-zinc-600 focus:ring-2 focus:ring-zinc-600/30 [html.light_&]:border-zinc-300 [html.light_&]:bg-zinc-50 [html.light_&]:text-zinc-900 [html.light_&]:placeholder:text-zinc-400 [html.light_&]:focus:border-zinc-400 [html.light_&]:focus:ring-zinc-400/30"
             />
           </div>
 
           {error && (
-            <p
-              className="rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-sm text-red-300"
-              role="alert"
-            >
+            <p className="rounded-lg border border-red-900/50 bg-red-950/40 px-3 py-2 text-xs text-red-300 [html.light_&]:border-red-200 [html.light_&]:bg-red-50 [html.light_&]:text-red-600" role="alert">
               {error}
             </p>
           )}
           {notice && (
-            <p
-              className="rounded-lg border border-amber-900/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100"
-              role="status"
-            >
+            <p className="rounded-lg border border-amber-900/50 bg-amber-950/40 px-3 py-2 text-xs text-amber-200 [html.light_&]:border-amber-200 [html.light_&]:bg-amber-50 [html.light_&]:text-amber-700" role="status">
               {notice}
             </p>
           )}
           {info && (
-            <p className="rounded-lg border border-emerald-900/50 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">
+            <p className="rounded-lg border border-emerald-900/50 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-300 [html.light_&]:border-emerald-200 [html.light_&]:bg-emerald-50 [html.light_&]:text-emerald-700">
               {info}
             </p>
           )}
@@ -250,15 +321,16 @@ export default function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-lg bg-zinc-100 py-2.5 text-sm font-semibold text-zinc-950 transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-60 [html.light_&]:bg-zinc-900 [html.light_&]:text-zinc-50 [html.light_&]:hover:bg-zinc-800"
           >
-            {loading
-              ? "Please wait…"
-              : mode === "login"
-                ? "Sign in"
-                : "Create account"}
+            {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
           </button>
         </form>
+      </div>
+
+      {/* Theme selector — bottom left */}
+      <div className="fixed bottom-4 left-4 z-50">
+        <ThemeSelector />
       </div>
     </div>
   );

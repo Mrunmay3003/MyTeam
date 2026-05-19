@@ -953,13 +953,6 @@ useEffect(() => {
         setShowManagerNotifPrompt(true);
       }
 
-      // Check for due scheduled prompts
-      fetch("/api/check-scheduled", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId: workspace.id }),
-      }).catch(err => console.error("check-scheduled error:", err));
-
       const chat = await ensureOnboardingChat(workspace.id);
       if (!chat) throw new Error("Unable to load onboarding chat.");
       if (cancelled) return;
