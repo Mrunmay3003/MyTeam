@@ -784,7 +784,7 @@ export default function TeammatePage() {
                 </button>
               </div>
             ) : (
-              <button type="button" title="Settings" className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
+              <button type="button" title="Settings" onClick={() => { setSidebarOpen(true); setTimeout(() => setSettingsPanelOpen(true), 210); }} className="flex h-8 w-8 mx-auto items-center justify-center rounded-md text-zinc-500 transition-colors hover:bg-zinc-800/60 hover:text-zinc-300"><SettingsIcon /></button>
             )}
           </div>
         </aside>
