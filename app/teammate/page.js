@@ -3,6 +3,32 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+function MarkdownMessage({ content, className }) {
+  return (
+    <div className={className}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-4 mb-1 space-y-0.5">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-4 mb-1 space-y-0.5">{children}</ol>,
+          li: ({ children }) => <li>{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          hr: () => <hr className="border-zinc-600 my-2" />,
+          code: ({ children }) => <code className="bg-zinc-950/60 rounded px-1 py-0.5 text-[0.9em] font-mono">{children}</code>,
+          pre: ({ children }) => <pre className="bg-zinc-950/60 rounded p-2 overflow-x-auto mb-1 font-mono text-[0.9em]">{children}</pre>,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function ThemeSelector({ onClose }) {
   function getCurrent() {
     if (typeof window === "undefined") return "system";
@@ -810,9 +836,7 @@ export default function TeammatePage() {
                 {messages.map((m, i) => {
                   const isUser = m.role === "user";
                   return (
-                    <div key={m.id ?? i} className={`max-w-[80%] whitespace-pre-wrap rounded-xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`}>
-                      {m.content}
-                    </div>
+                    <MarkdownMessage key={m.id ?? i} content={m.content} className={`max-w-[80%] select-text cursor-text rounded-xl px-4 py-2.5 text-sm leading-relaxed ${isUser ? "ml-auto bg-zinc-700 text-zinc-100" : "mr-auto bg-zinc-800 text-zinc-200"}`} />
                   );
                 })}
               </div>
