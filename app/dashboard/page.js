@@ -551,6 +551,39 @@ function OrgCodeSetupModal({ onClose, onSave }) {
   );
 }
 
+function renderValue(value) {
+  if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
+    return (
+      <ul className="space-y-1.5 mt-1">
+        {value.map((v, i) => (
+          <li key={i} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
+            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
+            <span>{typeof v === "object" && v !== null
+              ? Object.entries(v).map(([k, val]) => `${k.replace(/_/g, " ")}: ${val}`).join(" · ")
+              : String(v)}
+            </span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    return (
+      <ul className="space-y-1.5 mt-1">
+        {Object.entries(value).map(([k, v]) => (
+          <li key={k} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
+            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
+            <span><span className="text-zinc-400">{k.replace(/_/g, " ")}:</span> {String(v)}</span>
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  return <p className="text-xs text-zinc-300 leading-relaxed mt-1">{String(value)}</p>;
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function DashboardPage() {
   const router = useRouter();
@@ -628,39 +661,6 @@ export default function DashboardPage() {
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
   const [businessProfileOpen, setBusinessProfileOpen] = useState(false);
   const [businessMemory, setBusinessMemory] = useState(null);
-
-  function renderValue(value) {
-  if (value === null || value === undefined) return <p className="text-xs text-zinc-500 italic">Not specified</p>;
-  if (Array.isArray(value)) {
-    if (value.length === 0) return <p className="text-xs text-zinc-500 italic">None</p>;
-    return (
-      <ul className="space-y-1.5 mt-1">
-        {value.map((v, i) => (
-          <li key={i} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
-            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
-            <span>{typeof v === "object" && v !== null
-              ? Object.entries(v).map(([k, val]) => `${k.replace(/_/g, " ")}: ${val}`).join(" · ")
-              : String(v)}
-            </span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  if (typeof value === "object") {
-    return (
-      <ul className="space-y-1.5 mt-1">
-        {Object.entries(value).map(([k, v]) => (
-          <li key={k} className="flex gap-2 text-xs text-zinc-300 leading-relaxed">
-            <span className="text-zinc-600 shrink-0 mt-0.5">→</span>
-            <span><span className="text-zinc-400">{k.replace(/_/g, " ")}:</span> {String(v)}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  }
-  return <p className="text-xs text-zinc-300 leading-relaxed mt-1">{String(value)}</p>;
-}
 
   async function registerPushNotifications(wsId) {
     try {
