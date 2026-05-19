@@ -347,6 +347,25 @@ export default function TeammatePage() {
     if (step !== "chat") return;
     setTimeout(() => {
       if (chatScrollRef.current) {
+        chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+      }
+    }, 150);
+  }, [step]);
+
+  useEffect(() => {
+    if (centreView === "chat" && chatScrollRef.current) {
+      setTimeout(() => {
+        if (chatScrollRef.current) {
+          chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+        }
+      }, 100);
+    }
+  }, [centreView]);
+
+  useEffect(() => {
+    if (step !== "chat") return;
+    setTimeout(() => {
+      if (chatScrollRef.current) {
         chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
       }
     }, 150);

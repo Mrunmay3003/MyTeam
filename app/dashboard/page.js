@@ -766,6 +766,18 @@ export default function DashboardPage() {
   }, [activeTeammateMessages]);
 
   useEffect(() => {
+  if (centreView === "canvas" && managerScrollRef.current) {
+    managerScrollRef.current.scrollTop = managerScrollRef.current.scrollHeight;
+  }
+}, [centreView]);
+
+useEffect(() => {
+  if (centreView === "chat" && tmChatScrollRef.current && activeTeammateMessages.length > 0) {
+    tmChatScrollRef.current.scrollTop = tmChatScrollRef.current.scrollHeight;
+  }
+}, [centreView]);
+
+  useEffect(() => {
     const pref = localStorage.getItem("myteam-theme") ?? "system";
     const resolved = pref === "system"
       ? (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark")
@@ -965,7 +977,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!contextScrollRef.current) return;
-    contextScrollRef.current.scrollTo({ top: contextScrollRef.current.scrollHeight, behavior: "smooth" });
+    contextScrollRef.current.scrollTop = contextScrollRef.current.scrollHeight;
   }, [onboardingMessages, contextOpen]);
   useEffect(() => {
     if (!managerNode?.id) return;
