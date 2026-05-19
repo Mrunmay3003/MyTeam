@@ -1588,7 +1588,7 @@ useEffect(() => {
                   ))}
                   {!managerNode && (
                     <div style={{ position: "absolute", left: -120, top: -44 }}>
-                      <button type="button" onClick={() => setModalType("manager")} className="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-zinc-600 bg-zinc-900/80 text-zinc-400 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 active:scale-95" style={{ width: 240, height: 88 }}>
+                      <button type="button" onClick={() => setModalType("manager")} className="flex items-center justify-center gap-3 rounded-2xl border-2 border-dashed [html.light_&]:bg-zinc-200 [html.light_&]:text-zinc-800 [html.light_&]:border-zinc-300 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 active:scale-95" style={{ width: 240, height: 88 }}>
                         <span className="flex h-10 w-10 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800"><PlusIcon className="h-5 w-5" /></span>
                         <span className="text-sm font-medium">Create Manager Chat</span>
                       </button>
