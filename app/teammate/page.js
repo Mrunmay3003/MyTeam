@@ -354,11 +354,7 @@ export default function TeammatePage() {
 
   useEffect(() => {
     if (centreView === "chat" && chatScrollRef.current) {
-      setTimeout(() => {
-        if (chatScrollRef.current) {
-          chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
-        }
-      }, 100);
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
     }
   }, [centreView]);
 
