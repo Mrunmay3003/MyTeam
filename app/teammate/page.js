@@ -338,7 +338,7 @@ export default function TeammatePage() {
     if (!chatScrollRef.current) return;
     setTimeout(() => {
       if (chatScrollRef.current) {
-        chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
       }
     }, 100);
   }, [messages]);
@@ -347,7 +347,7 @@ export default function TeammatePage() {
     if (step !== "chat") return;
     setTimeout(() => {
       if (chatScrollRef.current) {
-        chatScrollRef.current.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: "smooth" });
+        chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
       }
     }, 150);
   }, [step]);
