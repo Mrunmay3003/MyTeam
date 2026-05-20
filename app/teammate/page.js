@@ -831,7 +831,16 @@ export default function TeammatePage() {
                 }}
               >
                 {messages.length === 0 && (
-                  <p className="text-center text-xs text-zinc-600 pt-12">Your AI assistant will reach out with tasks and updates here.</p>
+                  <div className="flex flex-col items-center gap-3 pt-12">
+                    <p className="text-center text-xs text-zinc-600">Your AI assistant is ready — say hi to get started.</p>
+                    <button
+                      type="button"
+                      onClick={() => { setInput("Hi"); setTimeout(() => handleSend("Hi"), 0); }}
+                      className="rounded-full border border-zinc-700 bg-zinc-800 px-4 py-1.5 text-xs text-zinc-400 transition-colors hover:bg-zinc-700 hover:text-zinc-200 [html.light_&]:border-zinc-300 [html.light_&]:bg-zinc-100 [html.light_&]:text-zinc-600 [html.light_&]:hover:bg-zinc-200"
+                    >
+                      Say Hi 👋
+                    </button>
+                  </div>
                 )}
                 {messages.map((m, i) => {
                   const isUser = m.role === "user";

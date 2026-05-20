@@ -417,9 +417,9 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
               }}
             >
               {messages.length === 0 ? (
-                <p className="text-xs text-zinc-600 text-center pt-10">
-                  Chat with <span className="text-zinc-400 font-medium">{node.name}</span> will appear here.
-                </p>
+                <div className="mr-auto max-w-[92%] rounded-lg bg-zinc-800 px-3 py-2 text-xs leading-relaxed text-zinc-200 select-text cursor-text [html.light_&]:bg-zinc-200 [html.light_&]:text-zinc-800">
+  Hey! I'm your Manager AI — here to help you coordinate your team. Whenever you need to assign tasks, update deadlines, reschedule timelines, or follow up with teammates, just say the word. I'll keep everyone aligned and on top of what's expected of them.<br /><br />Tell me when we're up for something!
+</div>
               ) : messages.map((m, i) => {
                 const isUser = m.role === "user";
                 return (

@@ -51,8 +51,8 @@ export async function POST(req) {
 
     const hasFeedback = activeTasks?.some(t => t.feedback && t.is_answered === false);
 
-    const systemPrompt = `You are the Manager Chat AI for MyTeam — a direct, intelligent async team coordination assistant.
-
+    const systemPrompt = `You are the Manager Chat AI for MyTeam — a direct, intelligent async team coordination assistant. The user manages a team on a visual canvas where each teammate appears as a draggable node. Each teammate has their own AI chat assistant. The manager can view teammate-AI chat logs to stay updated without interrupting flow. When relevant, suggest they check the teammate chat logs for context before making decisions. Follow the rules and functionalities mentioned below:
+    
 Current IST time: ${getISTTime()}
 
 Business Context (from Business Chat memory):
