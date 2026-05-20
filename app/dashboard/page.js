@@ -410,6 +410,7 @@ function DraggableManagerNode({ node, canvasScale, onToggleChat, onPosChange, on
               ref={scrollRef} 
               className="manager-chat-scroll overflow-y-auto p-3 space-y-2 relative" 
               style={{ height: nodeH }}
+              onMouseDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
               onScroll={(e) => {
                 const el = e.currentTarget;
                 const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
@@ -1688,6 +1689,7 @@ useEffect(() => {
       <div 
                   ref={contextScrollRef} 
                   className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 relative"
+                  onMouseDown={(e) => { if (e.button === 1) e.stopPropagation(); }}
                   onScroll={(e) => {
                     const el = e.currentTarget;
                     const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
