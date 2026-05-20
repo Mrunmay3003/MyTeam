@@ -40,6 +40,7 @@ console.log("task query result:", { chatId, workspaceId, tasks, taskCount: tasks
       .select("content")
       .eq("workspace_id", workspaceId)
       .maybeSingle();
+const safeMemory = bizMemory?.content?.replace(/`/g, "'").replace(/\$\{/g, "$(") ?? "";
 
     const tasksContext = tasks?.length > 0
       ? tasks.map((t, i) => {
@@ -77,7 +78,7 @@ Communicate tasks, deadlines, and instructions from the manager clearly and conv
 5. Keep responses short and direct. No over-explaining.
 6. Always be on the teammate's side — you are their assistant, not a monitor.
 
-${bizMemory?.content ? `Business context (for reference when asked):\n${bizMemory.content}\n\n` : ""}
+${safeMemory ? `Business context (for reference when asked):\n${safeMemory}\n\n` : ""}
 
 CRITICAL RULES — append exactly one marker after your reply if any of these apply:
 
