@@ -56,13 +56,6 @@ FEEDBACK_CLEARED
 {"title":"${t.title}"}`;
 }
 
-if (fullReply.includes(clearedMarker)) {
-  const idx = fullReply.indexOf(clearedMarker);
-  visibleReply = fullReply.slice(0, idx).trim();
-  actionJson = fullReply.slice(idx + clearedMarker.length).trim();
-  actionType = "feedback_cleared";
-}
-
           return `${i + 1}. [${t.status.toUpperCase()}] ${t.title} — Due: ${deadline}\nDetails: ${t.description}${feedbackNote}`;
         }).join("\n\n")
       : "No active tasks assigned yet.";
