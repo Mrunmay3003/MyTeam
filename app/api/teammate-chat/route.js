@@ -40,7 +40,8 @@ console.log("task query result:", { chatId, workspaceId, tasks, taskCount: tasks
       .select("content")
       .eq("workspace_id", workspaceId)
       .maybeSingle();
-const safeMemory = bizMemory?.content?.replace(/`/g, "'").replace(/\$\{/g, "$(") ?? "";
+const rawMemory = typeof bizMemory?.content === "string" ? bizMemory.content : JSON.stringify(bizMemory?.content ?? "");
+const safeMemory = rawMemory.replace(/`/g, "'").replace(/\$\{/g, "$(");
 
     const tasksContext = tasks?.length > 0
       ? tasks.map((t, i) => {
