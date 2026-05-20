@@ -35,6 +35,12 @@ const codeDetectedDone = doneKeywords.some(k => lastUserMsg.includes(k));
       .in("status", ["pending", "in_progress"]);
 console.log("task query result:", { chatId, workspaceId, tasks, taskCount: tasks?.length });
 
+    const { data: bizMemory } = await supabaseAdmin
+      .from("business_memory")
+      .select("content")
+      .eq("workspace_id", workspaceId)
+      .maybeSingle();
+
     const tasksContext = tasks?.length > 0
       ? tasks.map((t, i) => {
           const deadline = t.deadline_ist
@@ -77,6 +83,8 @@ Communicate tasks, deadlines, and instructions from the manager clearly and conv
 4. If the teammate explicitly asks you to raise something to the manager (or you clearly cannot answer from the task details), use TASK_FEEDBACK. Do not raise feedback for things you can answer yourself.
 5. Keep responses short and direct. No over-explaining.
 6. Always be on the teammate's side — you are their assistant, not a monitor.
+
+${bizMemory?.content ? `Business context (for reference when asked):\n${bizMemory.content}\n\n` : ""}
 
 CRITICAL RULES — append exactly one marker after your reply if any of these apply:
 
